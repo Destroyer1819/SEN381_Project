@@ -1,136 +1,102 @@
-# CivicConnect
+# SEN381_Project
+# CivicConnect — Milestone 1 Working Plan
+*Engineering Foundation & Requirements Baseline (PED v1.0)*
 
-Community service request system for SEN381 Software Engineering at Belgium Campus ITversity (2026). Built by team Proto.
+This is a starting draft for every required M1 output. It's meant to be argued with, edited, and pasted into your PED — not copied blind. Where something is a placeholder, it's marked `[TEAM: fill in]`.
 
-CivicConnect replaces the mix of email, phone calls, WhatsApp, spreadsheets and paper that a community organisation uses to handle service requests (facility faults, IT support, maintenance, lost property, security concerns). It keeps one traceable record of every request: submit, assign, work on it, resolve, close.
+---
 
-**Stack:** Laravel 12, Inertia, React 19 (TypeScript), Tailwind 4, shadcn/ui and PostgreSQL.
+## 0. Before anything else — team + repo setup
 
-## Team
+- [ ] Assign a lead per section for *drafting*, but every person must be able to defend every artefact (individual defence, not team defence).
+- [ ] Suggested split for 3 people:
+  - **A:** Problem, stakeholders, scope
+  - **B:** Requirements, acceptance criteria, RTM
+  - **C:** Constraints, risk register, forward engineering, decision log
+  - GitHub governance and AI Usage Register are shared — nobody "owns" the controls.
+- [ ] Create the repo now. Protect `main`. Require PRs. Require 2 approvals from non-authors. Add a PR template. Start committing docs from day 1 — the brief explicitly penalizes bulk-uploaded evidence.
+- [ ] Folder structure (from the brief, Appendix C):
+  ```
+  docs/PED/ requirements/ architecture/ decisions/ risk/ change/ quality/ security/ deployment/
+  src/
+  tests/
+  .github/workflows/ pull_request_template.md
+  ```
 
-| Member | GitHub |
-|---|---|
-| Xander Oosthuyzen | Destroyer1819 |
-| Michael Cheyne | |
-| Jared Swanepool | |
+---
 
-## What it does
+## 1. Problem & Business Need
 
-**Requestors**
-- Submit a request with a category from a controlled list, a location, an area and a description
-- See only their own requests, with the current status and a full history timeline
+Draft (CivicConnect-specific, not a rewrite of the scenario):
 
-**Staff**
-- Search, filter and sort requests (status, category, date range, assigned to me)
-- Take a request, or offer it to another staff member who can accept or decline
-- Move a request through the status workflow and add comments and resolution notes
+> [TEAM NAME]'s community organisation currently handles service requests (facility faults, IT support, maintenance, lost property, security concerns) across email, phone, WhatsApp, spreadsheets, and paper. This produces duplicated or lost requests, no visibility for requesters, no clear ownership for staff, and no reliable reporting for management. CivicConnect's business value is a single controlled record of a request's lifecycle: submit → categorise → assign → act → resolve → report — closing the accountability gap that currently exists.
 
-**Management**
-- Dashboard of open, overdue, resolved and closed requests, filterable by category and date
-- Staff abilities, plus offering requests to staff
+Link each sentence above to a stakeholder need in section 2 — that link is literally what's assessed here (3 marks).
 
-Access is role based (requestor, staff, management) and enforced on the server.
+---
 
-### Status workflow
+## 2. Stakeholder Analysis
 
-`open` to `assigned` to `in_progress` to `resolved` to `closed`
+| Stakeholder | Needs | Influence | Interest | Conflict / competing expectation |
+|---|---|---|---|---|
+| Requester (community member) | Submit easily, see status, get feedback | Low | High | Wants fast resolution + full visibility |
+| Staff (request handler) | Manageable workload, clear ownership, low admin overhead | Medium | High | Wants fewer notifications/updates — conflicts with requester's visibility need |
+| Management / oversight | Accountability, reporting, overdue tracking | High | High | Wants detailed reporting — conflicts with staff's "less admin" preference |
+| System owner (your team / lecturer as client proxy) | Working, defensible, scoped system | High | High | Wants breadth of features vs. team's schedule/cost limits |
+| [Add: IT/security-conscious stakeholder if request data is sensitive] | Data handled consistently, no leaks | Medium | Medium | May conflict with speed of MVP delivery |
 
-The allowed moves are stored as data in the `request_status_transition` table. They are enforced by `RequestWorkflow` (with a clear error message) and again by a composite foreign key in the database. Resolving a request needs a resolution note. Each request carries a `version`, so two staff members cannot silently overwrite each other.
+**The conflict worth writing up in full:** requester visibility vs. staff admin burden. E.g. real-time status updates for requesters could mean staff must update status frequently — if that's not designed for low friction, staff will stop updating it, which breaks the whole point of the system. That's a genuine trade-off you can defend in the interview.
 
-A request that is not resolved or closed after 3 days is flagged overdue. Change the limit with `OVERDUE_DAYS` in `.env`.
+---
 
-## Quick start
+## 3. Scope Baseline
 
-Needs PHP 8.2+, Composer, Node 20+, pnpm and PostgreSQL.
+**In scope (M1 commitment):**
+- Request submission with category, description, location/area
+- Controlled category list (not free text)
+- Status tracking visible to requester (submitted → assigned → in progress → resolved → closed)
+- Staff: view/search/filter/sort requests, assign/accept, update status, add comments/resolution notes
+- Management: dashboard view by status/category/overdue, basic activity reporting
+- Role-based access (Requester / Staff / Management)
 
-```bash
-createdb civicconnect
-createdb civicconnect_test
-cp .env.example .env      # set DB_USERNAME / DB_PASSWORD if needed
-composer install
-php artisan key:generate
-php artisan migrate --seed
-pnpm install
-pnpm build
-php artisan serve         # http://127.0.0.1:8000
-```
+**Out of scope (M1):**
+- WhatsApp/SMS/telephone integration
+- Native mobile app
+- Payment processing
+- Multi-language support
+- Predictive/AI-driven prioritisation
 
-For frontend development, run `pnpm dev` alongside `php artisan serve`.
+**Deferred / future scope:**
+- SMS or push notifications (email/in-app only for now)
+- Public API for third-party integration
+- Advanced analytics/BI-style reporting
 
-### Demo accounts
+**Defend one exclusion (required evidence):**
+> We are excluding SMS/WhatsApp notification integration from the baseline. It introduces a paid third-party API dependency, rate limits, and delivery-reliability risk that conflicts with our cost constraint (Section 4: Master Brief prefers free/low-cost services). Email + in-app status visibility satisfies the underlying stakeholder need (know what's happening to my request) without that dependency. We will revisit this if staff/requester feedback during later milestones shows email is insufficient — this is a deliberate deferment, not an oversight.
 
-The password is `SEED_PASSWORD` from `.env` (default `password`).
+---
 
-| Role | Email |
-|---|---|
-| Management | management@civicconnect.test |
-| Staff | staff1@civicconnect.test, staff2@civicconnect.test |
-| Requestor | requestor1@civicconnect.test, requestor2@civicconnect.test |
+## 4. Requirements & Acceptance Criteria
 
-The seeder also creates the five categories and a few sample requests across different statuses, including one overdue request.
+Use `FR-0xx` / `NFR-0xx`, a source, a priority (Must/Should/Could), and a *testable* acceptance criterion — "the system should be fast" is not acceptable; "returns results within 2 seconds for 95% of searches" is.
 
-## Checks
+### Functional (sample — expand to your actual scope)
 
-| Check | Command |
-|---|---|
-| PHP unit and API tests | `composer test` (needs the `civicconnect_test` database) |
-| Frontend tests | `pnpm test` |
-| Lint, format, types | `pnpm lint:check`, `pnpm format:check`, `pnpm types`, `composer lint:check` |
-| Dependency security | `composer audit`, `pnpm audit --audit-level=high` |
-| End-to-end | `pnpm exec playwright install chromium`, then `pnpm e2e` (app running and seeded) |
-| Load test | `LOAD_ROWS=5000 php artisan db:seed --class=LoadTestSeeder`, then `pnpm perf` |
+| ID | Requirement | Source | Priority | Acceptance Criteria |
+|---|---|---|---|---|
+| FR-001 | Requester can submit a service request with category, description, and location | Requester need | Must | Given required fields are filled, submitting creates a request with a unique ID and status "Submitted" |
+| FR-002 | Requester can view the status and history of their own requests | Requester need | Must | Requester sees only their own requests; status reflects the latest staff action within 5 seconds of update |
+| FR-003 | Staff can search/filter requests by status, category, and date | Staff need | Must | Filtering by any single field returns only matching requests; combinable filters return the intersection |
+| FR-004 | Staff can assign a request to themselves or another authorised staff member | Staff need | Must | Assignment updates request owner and is visible in request history/audit trail |
+| FR-005 | Staff can transition request status through a controlled workflow (Submitted → Assigned → In Progress → Resolved → Closed) | Staff need | Must | Invalid transitions (e.g. Closed → Assigned) are rejected with an error message |
+| FR-006 | Requester receives a notification when request status changes | Requester need | Should | An email/in-app notification is generated within 1 minute of a status change event |
+| FR-007 | Management can view a dashboard of open, overdue, resolved, and closed requests | Management need | Must | Dashboard counts match underlying request data at time of query, filterable by category/date range |
+| FR-008 | System enforces role-based access (Requester/Staff/Management) | Security/governance | Must | A Requester account cannot access staff-only or management-only views/endpoints (verified by attempted access test) |
 
-CI is in `.github/workflows/ci.yml` and fails the quality gate if any job fails.
+`[TEAM: add remaining FRs to reach full coverage of Section 3 capabilities in the Master Brief — aim for ~15-20 total, each traceable to a stakeholder need]`
 
-## Project layout
+### Non-functional (sample)
 
-```
-app/
-  Http/Controllers/   Request, dashboard, auth and settings controllers
-  Http/Middleware/    EnsureRole (role-based access)
-  Http/Requests/      Form validation (StoreServiceRequest)
-  Models/             ServiceRequest, Category, RequestAssignment,
-                      RequestComment, RequestStatusHistory, User
-  Services/           RequestWorkflow (all request business rules)
-config/civicconnect.php   Statuses, roles, overdue limit, page size
-database/
-  sql/civicconnect_schema.sql   The team's schema, loaded by one migration
-  seeders/                      Demo data and load-test data
-resources/js/
-  pages/              Dashboard, requests (list, create, show), auth, settings
-  components/         Filter bar, request form, status badge, shadcn/ui
-  lib/                Client-side validation and workflow helpers
-routes/               web, auth, settings
-tests/                Unit, Feature (API) and perf (load test)
-e2e/                  Playwright request lifecycle journeys
-docs/m3/              Milestone 3 evidence and notes
-```
-
-The database design is the team's own. `database/sql/civicconnect_schema.sql` is loaded by a single migration, so schema changes go into that SQL file through a pull request.
-
-## Documentation
-
-Milestone 3 documents are in `docs/m3/`:
-
-- `README.md`: run and verify guide
-- `test-evidence-register.md`: test cases, techniques and results
-- `rtm-rows.md`: requirement traceability rows
-- `register-additions.md`: ADRs, technical debt and risk entries
-- `github-and-staging.md`: repository controls, release candidate, staging and rollback
-
-## Known limitations
-
-- Notifications (FR-006) are not built. Requestors follow progress through the request history timeline.
-- Overdue uses one global rule, not a per-category target.
-- No password reset, email verification or request attachments.
-- Staff and management accounts are created by the seeder only.
-
-See the technical debt register in `docs/m3/register-additions.md` for the full list and next actions.
-
-## Engineering controls
-
-- `main` is protected. All changes go through pull requests with 2 approvals from people other than the author.
-- The CI quality gate must pass before merging.
-- Never commit `.env` or any secret. Use `.env.example` and environment variables.
-- Work on branches such as `feature/<name>` or `fix/<name>` and link each PR to an issue.
-- Material AI use is recorded in the AI Usage Register and verified before merging.
+| ID | Requirement | Priority | Acceptance Criteria |
+|---|---|---|---|
+... (150 lines left)
