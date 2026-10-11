@@ -23,3 +23,7 @@ yarn-error.log
 /.vscode
 /.zed
 .windsurfrules
+# Frontend test output
+/playwright-report
+/test-results
+/coverage
