@@ -1,290 +1,148 @@
-# Frontend Documentation
+# Frontend
 
-## 🏗️ Frontend Architecture
+The frontend is React 19 with TypeScript, rendered through Inertia 3. Laravel decides which page to show and passes it data as props; there is no separate JSON API.
 
-The frontend is built with React 19, TypeScript 5.8.2, and Inertia.js v2, providing a modern single-page application experience while maintaining the benefits of server-side rendering. It uses Vite 6.2.0 as the bundler and includes Tailwind CSS 4, Shadcn UI, and Lucide React 0.473.0 for the UI components.
+## Layout of `resources/js`
 
-### Directory Structure
+| Path | Contents |
+|---|---|
+| `app.tsx` | Entry point. Loads the page component Laravel names. |
+| `pages/` | One file per screen. `Inertia::render('requests/index')` loads `pages/requests/index.tsx`. |
+| `layouts/` | `app-layout` (sidebar shell), `auth-layout` (login and register), `settings/layout`. |
+| `components/` | App components: `request-form`, `filter-bar`, `status-badge`, `pagination`, sidebar and navigation. |
+| `components/ui/` | Generic shadcn/ui building blocks. |
+| `lib/validation.ts` | Client-side rules for the request form. |
+| `lib/workflow.ts` | Status labels, action labels, date formatting. |
+| `types/` | `index.ts` (shared props, `User`) and `civic.ts` (request data shapes). |
 
-```
-resources/js/
-├── components/     # Reusable UI components
-│   └── ui/        # Shadcn UI components
-├── layouts/        # Page layouts
-├── Pages/         # Page components
-├── types/         # TypeScript definitions
-├── hooks/         # Custom React hooks
-├── lib/           # Library code and utilities
-└── utils/         # Utility functions
-```
+Component and unit tests sit next to the code as `*.test.ts(x)`. End-to-end journeys are in `e2e/`.
 
-## 🎨 UI Components
+## Data every page receives
 
-### Shadcn UI Integration
+Shared from `app/Http/Middleware/HandleInertiaRequests.php`:
 
-We use Shadcn UI for consistent, accessible components with the following configuration:
+| Prop | Shape | Used for |
+|---|---|---|
+| `auth.user` | `{ id, name, email, role, ... }` or `null` | Sidebar and role-based display. `role` is `requestor`, `staff` or `management`. |
+| `flash.success` | string or `null` | Green banner at the top of the page. Set with `->with('success', '...')` on a redirect. |
+| `name` | string | App name. |
 
-- Style: default
-- Base color: neutral
-- CSS variables mode enabled
-- TypeScript and React strict mode enabled
-- Lucide React icons integration
+Validation errors arrive through Inertia's standard `errors` prop, keyed by field name.
 
-Components are installed using the CLI:
+## What each page expects from the backend
 
-```bash
-pnpm dlx shadcn-ui@latest add button
-```
+The pages below exist, but their routes do not yet. All of them require a signed-in user.
 
-Components are stored in `resources/js/components/ui/` and can be customized in `components.json`.
+### `GET /requests` renders `requests/index`
 
-### Custom Components
+| Prop | Shape |
+|---|---|
+| `requests` | Paginator of request summaries: `{ data, total, current_page, last_page, prev_page_url, next_page_url }` |
+| `filters` | The filters currently applied, echoed back so the form keeps its values |
+| `categories` | `[{ id, name }]` |
+| `statuses` | `['open', 'assigned', 'in_progress', 'resolved', 'closed']` |
 
-Custom components follow these conventions:
+Each request summary:
 
-```typescript
-// resources/js/components/MyComponent.tsx
-import React from 'react'
-import { cn } from '@/lib/utils'
+| Field | Type | Notes |
+|---|---|---|
+| `id` | number | Used in links to `/requests/{id}` |
+| `reference` | string | Displayed reference. The end-to-end test expects the form `CC-` followed by digits. |
+| `status` | one of the five statuses | |
+| `category` | string or null | The category name, not its id |
+| `location`, `area`, `description` | string | |
+| `requestor`, `assignee` | string or null | Names, not ids |
+| `overdue` | boolean | Shows an "Overdue" badge |
+| `created_at`, `updated_at` | ISO date string | |
 
-interface MyComponentProps {
-  className?: string
-  children: React.ReactNode
-}
+Query parameters the filter form sends (all optional; empty ones are omitted):
 
-export function MyComponent({ className, children }: MyComponentProps) {
-  return (
-    <div className={cn('base-styles', className)}>
-      {children}
-    </div>
-  )
-}
-```
+| Parameter | Meaning |
+|---|---|
+| `q` | Free-text search over reference, location or text |
+| `status` | One status value |
+| `category_id` | A category id |
+| `from`, `to` | Dates as `YYYY-MM-DD` |
+| `mine` | Present when "Assigned to me" is ticked. Only offered to staff and management. |
 
-## 🎯 Pages and Routing
+The page title and columns change for requestors, who are expected to see only their own requests.
 
-### Page Structure
-
-Pages are stored in `resources/js/pages/` and follow the Laravel route structure:
+### `GET /requests/create` renders `requests/create`
 
-```
-pages/
-├── Auth/
-│   ├── Login.tsx
-│   └── Register.tsx
-├── Dashboard/
-│   └── Index.tsx
-└── Welcome.tsx
-```
+| Prop | Shape |
+|---|---|
+| `categories` | `[{ id, name }]`, the categories a requester may choose |
 
-### Inertia Page Component
+### `POST /requests`
 
-```typescript
-import { Head } from '@inertiajs/react'
-import { PageProps } from '@/types'
+Body: `{ category_id: number, location: string, area: string, description: string }`, already trimmed.
 
-export default function Dashboard({ auth }: PageProps) {
-  return (
-    <>
-      <Head title="Dashboard" />
-      <h1>Welcome {auth.user.name}</h1>
-    </>
-  )
-}
-```
+The client applies these rules first, and the server is expected to enforce the same ones:
 
-## 📐 Layouts
+| Field | Rule |
+|---|---|
+| `category_id` | Required |
+| `location`, `area` | Required, at most 255 characters |
+| `description` | Required, 10 to 2000 characters |
 
-### Layout Structure
-
-Layouts are in `resources/js/layouts/` and provide consistent page structure:
-
-- `AuthenticatedLayout.tsx`: For authenticated pages
-- `GuestLayout.tsx`: For public pages
-- `AuthenticationLayout.tsx`: For auth-related pages
-
-### Using Layouts
-
-```typescript
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout'
-
-Dashboard.layout = (page: React.ReactNode) => (
-  <AuthenticatedLayout>{page}</AuthenticatedLayout>
-)
-```
-
-## 🎨 Styling with Tailwind 4
-
-### Configuration
-
-Tailwind 4 is configured with a modern CSS variables approach and full dark mode support. The configuration is defined in `resources/css/app.css`:
-
-```css
-@import 'tailwindcss';
-@plugin '@tailwindcss/forms';
-@plugin 'tailwindcss-animate';
-
-@theme {
-  --font-sans: Figtree, ui-sans-serif, system-ui, /* ... */;
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-}
-```
-
-### Theme System
-
-The theme system uses CSS variables for colors, with both light and dark mode support:
-
-```css
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    /* ... other color variables */
-  }
-
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    /* ... dark mode color variables */
-  }
-}
-```
-
-### CSS Organization
-
-```
-resources/css/
-├── app.css        # Main CSS file with theme configuration
-└── components/    # Component-specific styles
-```
-
-### Key Features
-
-1. **Modern CSS Variables**: Uses CSS custom properties for dynamic theming
-2. **Dark Mode**: Built-in `.dark` class variant
-3. **Semantic Colors**: HSL-based color system for consistent theming
-4. **Component Tokens**: Dedicated variables for specific UI components
-5. **Animation Support**: Built-in animation utilities via `tailwindcss-animate`
-
-### Styling Best Practices
-
-1. Use semantic color variables (e.g., `bg-background`, `text-foreground`)
-2. Leverage the new border color system with `border-border`
-3. Use radius variables for consistent component shapes
-4. Apply dark mode utilities with the `.dark` class variant
-5. Utilize Shadcn UI's built-in styling system
+On failure, return validation errors keyed `category_id`, `location`, `area`, `description`. On success, the end-to-end test expects a redirect to the new request's page with a flash message containing "Request submitted".
 
-## 🔄 State Management
+### `GET /requests/{id}` renders `requests/show`
 
-### Inertia Props
+| Prop | Shape |
+|---|---|
+| `request` | A request summary plus `version` (number) and `resolved_at` (ISO string or null) |
+| `history` | `[{ id, old_status, new_status, by, at }]`. `old_status` is null for the first entry; `by` is a name; `at` is an ISO string. |
+| `comments` | `[{ id, text, is_resolution, by, role, at }]` |
+| `actions` | What the current user may do; see below |
 
-Data from the server is passed as props:
+`actions`:
 
-```typescript
-interface PageProps {
-    auth: {
-        user: User;
-    };
-    errors: Record<string, string>;
-    flash: {
-        message?: string;
-    };
-}
-```
+| Field | Type | Effect on the page |
+|---|---|---|
+| `transitions` | string[] | Statuses the user may move this request to. Empty hides the status form. |
+| `canTake` | boolean | Shows "Take this request" |
+| `canOffer` | boolean | Shows the "Offer to" form |
+| `staff` | `[{ id, name }]` | Options for the offer form. Empty hides it. |
+| `pendingOfferId` | number or null | When set, shows Accept and Decline for that assignment |
 
-### Form Handling
+### Actions on a request
 
-Use Inertia's form helpers:
+| Request | Body | Notes |
+|---|---|---|
+| `POST /requests/{id}/status` | `{ status, version, note }` | `version` is the value the page loaded, for the stale-write check. `note` is filled in only when moving to `resolved`. Errors are shown for the keys `status`, `note` and `request` (use `request` for conflicts such as a stale version). |
+| `POST /requests/{id}/take` | none | Staff self-assign |
+| `POST /requests/{id}/offer` | `{ assigned_to }` | A staff user id. Errors keyed `assigned_to`. |
+| `POST /requests/{id}/comments` | `{ body }` | Errors keyed `body` |
+| `POST /assignments/{id}/respond` | `{ decision }` | `accept` or `decline` |
 
-```typescript
-import { useForm } from '@inertiajs/react';
+Each should redirect back to the request page so it reloads with fresh data.
 
-export default function UpdateProfile() {
-    const form = useForm({
-        name: '',
-        email: '',
-    });
+### `GET /dashboard` renders `dashboard`
 
-    function submit(e: React.FormEvent) {
-        e.preventDefault();
-        form.patch('/profile');
-    }
-}
-```
+Management only. The end-to-end test expects a 403 for other roles.
 
-## 📝 TypeScript Integration
+| Prop | Shape |
+|---|---|
+| `filters` | `{ category_id?, from?, to? }` echoed back |
+| `categories` | `[{ id, name }]` |
+| `stats` | `{ total, by_status, overdue, overdue_days, by_category }` |
 
-### Type Definitions
+`stats.by_status` is an object of status to count, `stats.by_category` is `[{ name, total }]`, and `stats.overdue_days` is the threshold shown in the "Overdue (> N days)" label. The filter form sends `category_id`, `from` and `to` as query parameters.
 
-Common types are stored in `resources/js/types/`:
+### Navigation the frontend assumes
 
-```typescript
-// types/index.d.ts
-export interface User {
-    id: number;
-    name: string;
-    email: string;
-    email_verified_at: string | null;
-}
+- The sidebar logo and the first menu item link to `/requests`. `/` and the after-login redirect currently go to `/settings/profile` and should move to `/requests` once it exists (`routes/web.php` and `home` in `config/fortify.php`).
+- The "Dashboard" link is shown only when `auth.user.role` is `management`.
 
-export interface PageProps {
-    auth: {
-        user: User;
-    };
-}
-```
+## Differences from the current database schema
 
-### Type Safety
+| Frontend expects | Schema has |
+|---|---|
+| `reference` as a string such as `CC-123` | `reference_number` as a number |
+| `overdue` flag and an `overdue_days` threshold | Nothing defines when a request is overdue |
+| Comment `text` in responses, `body` on submit | Column `comment` |
 
-- Strict mode enabled in `tsconfig.json`
-- ESLint configured for TypeScript
-- Props validation with TypeScript interfaces
+## What the end-to-end tests need
 
-## 🧪 Testing
-
-### Test Setup
-
-Tests use Jest and Testing Library:
-
-```typescript
-import { render, screen } from '@testing-library/react'
-import { Button } from './Button'
-
-describe('Button', () => {
-  it('renders correctly', () => {
-    render(<Button>Click me</Button>)
-    expect(screen.getByText('Click me')).toBeInTheDocument()
-  })
-})
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pnpm run test
-
-# Run with watch mode
-pnpm run test:watch
-
-# Run with coverage
-pnpm run test:coverage
-```
-
-## 🔍 Development Tools
-
-### VS Code Extensions
-
-Recommended extensions:
-
-- ESLint
-- Prettier
-- Tailwind CSS IntelliSense
+`e2e/` signs in as three seeded users, one per role, with the addresses listed in `e2e/helpers.js`. It also expects categories named "IT support" and "Lost property", with "Lost property" having id 4, and at least one existing request for the dashboard totals.

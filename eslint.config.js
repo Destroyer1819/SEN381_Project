@@ -1,67 +1,49 @@
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import reactRefreshPlugin from 'eslint-plugin-react-refresh';
+import js from '@eslint/js';
+import prettier from 'eslint-config-prettier';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
+import typescript from 'typescript-eslint';
 
+/** @type {import('eslint').Linter.Config[]} */
 export default [
-    { ignores: ['dist', 'node_modules', 'vendor', 'public'] },
+    js.configs.recommended,
+    ...typescript.configs.recommended,
     {
-        files: ['**/*.{ts,tsx}'],
+        ...react.configs.flat.recommended,
+        ...react.configs.flat['jsx-runtime'], // Required for React 17+
         languageOptions: {
-            parser: tsParser,
-            parserOptions: {
-                ecmaVersion: 'latest',
-                sourceType: 'module',
-                ecmaFeatures: {
-                    jsx: true,
-                },
-                project: './tsconfig.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
             globals: {
                 ...globals.browser,
-                ...globals.es2021,
-                route: 'readonly',
             },
         },
-        plugins: {
-            '@typescript-eslint': tsPlugin,
-            react: reactPlugin,
-            'react-refresh': reactRefreshPlugin,
-            'react-hooks': reactHooksPlugin,
+        rules: {
+            'react/react-in-jsx-scope': 'off',
+            'react/prop-types': 'off',
+            'react/no-unescaped-entities': 'off',
         },
         settings: {
-            'import/resolver': {
-                typescript: {
-                    alwaysTryTypes: true,
-                    project: './tsconfig.json',
-                },
-                alias: {
-                    map: [
-                        ['@', './resources/js'],
-                        ['@types', './resources/js/types'],
-                    ],
-                    extensions: ['.ts', '.tsx', '.js', '.jsx'],
-                },
-            },
             react: {
                 version: 'detect',
             },
         },
+    },
+    {
+        plugins: {
+            'react-hooks': reactHooks,
+        },
         rules: {
-            '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/explicit-function-return-type': 'off',
-            '@typescript-eslint/explicit-module-boundary-types': 'off',
-            '@typescript-eslint/no-unused-vars': [
-                'warn',
-                { argsIgnorePattern: '^_' },
-            ],
             'react-hooks/rules-of-hooks': 'error',
             'react-hooks/exhaustive-deps': 'warn',
-            'react/prop-types': 'off',
-            'react/react-in-jsx-scope': 'off',
         },
     },
+    {
+        // Node scripts (E2E, load test, tool configs) run in Node, not the browser
+        files: ['e2e/**', 'tests/perf/**', 'playwright.config.js', 'vite.config.js'],
+        languageOptions: { globals: { ...globals.node } },
+    },
+    {
+        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'playwright-report', 'test-results', 'perf-results', 'coverage'],
+    },
+    prettier, // Turn off all rules that might conflict with Prettier
 ];

@@ -1,114 +1,69 @@
-# Getting Started
+# Getting started
 
-## 📋 Prerequisites
+CivicConnect is a Laravel 12 application with a React 19 and TypeScript frontend, connected through Inertia 3, on PostgreSQL.
 
-Before you begin, ensure you have the following installed:
+## Prerequisites
 
-- PHP 8.4
-- Node.js (LTS version recommended)
+- PHP 8.4 or later with the `pdo_pgsql` extension (check with `php -m`)
 - Composer
-- Git
+- Node.js (LTS) and pnpm
+- PostgreSQL
 
-## 🚀 Installation
+## First-time setup
 
-1. **Clone the Repository**
+Run these from the repository root.
+
+1. Install the PHP and frontend packages:
+
+    ```bash
+    composer install
+    pnpm install
+    ```
+
+2. Create your environment file and app key:
+
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
+
+3. `.env` is already set up for a local PostgreSQL database called `civicconnect_dev` with the user `postgres`. Fill in your password on the `DB_PASSWORD=` line, and change the other `DB_` lines if your setup differs.
+
+4. Create the empty database (in pgAdmin, or with `createdb -U postgres civicconnect_dev`), then build the schema and seed it:
+
+    ```bash
+    php artisan migrate --seed
+    ```
+
+    The seeded login is defined in `database/seeders/DatabaseSeeder.php`.
+
+## Running the site
+
+Use two terminals and leave both running:
 
 ```bash
-git clone <your-repository-url> your-project-name
-cd your-project-name
+php artisan serve
 ```
-
-2. **Install PHP Dependencies**
-
-```bash
-composer install
-```
-
-3. **Install Node.js Dependencies**
-
-```bash
-pnpm install
-```
-
-4. **Environment Setup**
-
-```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-5. **Configure Your Environment**
-   Edit `.env` file with your database and other configuration settings:
-
-6. **Create Database and Initial User**
-
-```bash
-php artisan migrate --seed
-```
-
-Using the `--seed` flag will create an initial user you can use to access the dashboard.
-
-7. **Build Assets**
 
 ```bash
 pnpm run dev
 ```
 
-## 🏃‍♂️ Development Workflow
+Open http://127.0.0.1:8000. Vite prints its own address on port 5173, but that only serves assets.
 
-### Start the Development Server
+## Checks
 
-```bash
-pnpm run dev
-```
+| Command | What it runs |
+|---|---|
+| `php artisan test` | PHP tests, on in-memory SQLite |
+| `pnpm test` | Frontend unit and component tests (Vitest) |
+| `pnpm run types` | TypeScript type-check |
+| `pnpm run lint:check` | ESLint |
+| `pnpm run format:check` | Prettier, over `resources/` |
+| `pnpm run e2e` | Playwright journeys; needs the running site and the request backend |
 
-Your application will be available at `http://react-inertia-laravel.local`.
+## Database changes
 
-### Development Commands
+The schema lives in `database/migrations/`. Change it by adding a new migration, never by editing one that teammates have already run. The CHECK constraints only apply on PostgreSQL; SQLite skips them, so the PHP tests do not exercise them.
 
-```bash
-# Run tests
-php artisan test
-
-# Format PHP code
-./vendor/bin/pint
-
-# Type check TypeScript
-pnpm run typecheck
-
-# Lint JavaScript/TypeScript
-pnpm run lint
-
-# Format JavaScript/TypeScript
-pnpm run format
-```
-
-## 📦 Production Deployment
-
-1. **Optimize Composer**
-
-```bash
-composer install --optimize-autoloader --no-dev
-```
-
-2. **Build Frontend Assets**
-
-```bash
-pnpm run build
-```
-
-3. **Cache Configuration**
-
-```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+`php artisan migrate:fresh --seed` drops every table and rebuilds from the migrations.

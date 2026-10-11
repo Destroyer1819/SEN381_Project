@@ -7,7 +7,7 @@ test('profile page is displayed', function () {
 
     $response = $this
         ->actingAs($user)
-        ->get('/account/profile');
+        ->get('/settings/profile');
 
     $response->assertOk();
 });
@@ -17,14 +17,14 @@ test('profile information can be updated', function () {
 
     $response = $this
         ->actingAs($user)
-        ->patch('/account/profile', [
+        ->patch('/settings/profile', [
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect('/account/profile');
+        ->assertRedirect('/settings/profile');
 
     $user->refresh();
 
@@ -38,14 +38,14 @@ test('email verification status is unchanged when the email address is unchanged
 
     $response = $this
         ->actingAs($user)
-        ->patch('/account/profile', [
+        ->patch('/settings/profile', [
             'name' => 'Test User',
             'email' => $user->email,
         ]);
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect('/account/profile');
+        ->assertRedirect('/settings/profile');
 
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
@@ -55,7 +55,7 @@ test('user can delete their account', function () {
 
     $response = $this
         ->actingAs($user)
-        ->delete('/account/profile', [
+        ->delete('/settings/profile', [
             'password' => 'password',
         ]);
 
@@ -72,24 +72,14 @@ test('correct password must be provided to delete account', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from('/account/profile')
-        ->delete('/account/profile', [
+        ->from('/settings/profile')
+        ->delete('/settings/profile', [
             'password' => 'wrong-password',
         ]);
 
     $response
         ->assertSessionHasErrors('password')
-        ->assertRedirect('/account/profile');
+        ->assertRedirect('/settings/profile');
 
     $this->assertNotNull($user->fresh());
-});
-
-test('security page is displayed', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->get('/account/security');
-
-    $response->assertOk();
 });

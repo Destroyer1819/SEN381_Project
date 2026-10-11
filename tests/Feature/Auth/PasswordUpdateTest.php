@@ -8,8 +8,8 @@ test('user can update their password with valid data', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from('/account/profile')
-        ->put('/user/password', [
+        ->from('/settings/profile')
+        ->put('/settings/password', [
             'current_password' => 'password',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
@@ -27,8 +27,8 @@ test('user cannot update password with incorrect current password', function () 
 
     $response = $this
         ->actingAs($user)
-        ->from('/account/profile')
-        ->put('/user/password', [
+        ->from('/settings/profile')
+        ->put('/settings/password', [
             'current_password' => 'wrong-password',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
@@ -44,8 +44,8 @@ test('new password must be confirmed', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from('/account/profile')
-        ->put('/user/password', [
+        ->from('/settings/profile')
+        ->put('/settings/password', [
             'current_password' => 'password',
             'password' => 'new-password',
             'password_confirmation' => 'different-password',
@@ -61,8 +61,8 @@ test('new password must be at least 8 characters', function () {
 
     $response = $this
         ->actingAs($user)
-        ->from('/account/profile')
-        ->put('/user/password', [
+        ->from('/settings/profile')
+        ->put('/settings/password', [
             'current_password' => 'password',
             'password' => 'short',
             'password_confirmation' => 'short',

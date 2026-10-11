@@ -1,226 +1,47 @@
-# Backend Documentation
+# Backend
 
-## 🏗️ Backend Architecture
+Laravel 12 on PHP 8.4 or later, with PostgreSQL. This page describes what exists today; the request workflow itself has not been built yet.
 
-The backend of this application is built with Laravel 12.x and PHP 8.4, following modern best practices and design patterns. It uses Laravel Fortify for authentication, Laravel Sanctum for API tokens, and Ziggy for route handling.
+## Authentication
 
-### Directory Structure
+Laravel Fortify handles the form submissions, and only registration is enabled in `config/fortify.php`.
 
-```
-app/
-├── Console/          # Artisan commands
-├── Controllers/      # HTTP controllers
-├── Models/          # Eloquent models
-├── Providers/       # Service providers
-└── Services/        # Business logic services
+| Route | Handled by |
+|---|---|
+| `GET /login`, `GET /register` | `routes/auth.php`, which renders the `auth/login` and `auth/register` pages |
+| `POST /login`, `POST /logout`, `POST /register` | Fortify |
 
-database/
-├── factories/       # Model factories for testing
-├── migrations/      # Database migrations
-└── seeders/        # Database seeders
-```
+New users are created by `app/Actions/Fortify/CreateNewUser.php`. After login, users are sent to the `home` path in `config/fortify.php`.
 
-## 🔐 Authentication (Laravel Fortify)
+Password reset, email verification and two-factor login are switched off because the frontend has no pages for them.
 
-We use Laravel Fortify for authentication, which provides:
+## Settings
 
-- Login and Registration
-- Email Verification
-- Two-Factor Authentication
-- Password Reset
-- Password Confirmation
-- Profile Information Updates
+`routes/settings.php` and the controllers in `app/Http/Controllers/Settings/` serve the profile, password and appearance pages under `/settings`.
 
-### Fortify Configuration
+## Shared page data
 
-Fortify is configured in `config/fortify.php`. Key features enabled:
+`app/Http/Middleware/HandleInertiaRequests.php` sends `auth.user`, `flash.success` and `name` to every page. See [frontend.md](frontend.md) for what each page expects beyond that.
 
-```php
-'features' => [
-    Features::registration(),
-    Features::resetPasswords(),
-    Features::emailVerification(),
-    Features::updateProfileInformation(),
-    Features::updatePasswords(),
-    Features::twoFactorAuthentication(),
-],
-```
+## Database
 
-### Authentication Flow
+The schema is defined by the migrations in `database/migrations/`:
 
-1. User submits credentials
-2. Fortify validates credentials
-3. On success:
-    - Session is created
-    - User is redirected to dashboard
-4. On failure:
-    - Error response is returned
-    - User stays on login page
+| Table | Purpose |
+|---|---|
+| `users` | Accounts, with a `role` of `requestor`, `staff` or `management` |
+| `categories` | Controlled list of request categories |
+| `service_requests` | The request itself, with `status` and a `version` column for stale-write checks |
+| `request_status_transitions` | Legal from/to status pairs, inserted by the migration |
+| `request_status_history` | Append-only record of status changes |
+| `request_assignments` | Offers, acceptances and self-assignments |
+| `request_comments` | Comments and resolution notes |
+| `sessions`, `cache`, `jobs`, `failed_jobs` | Laravel's own tables |
 
-## 📡 API Endpoints
+On PostgreSQL the migrations also add CHECK constraints for status values, roles and date ordering. SQLite skips them.
 
-### Authentication Endpoints
+The PostgreSQL connection sets its session time zone to `APP_TIMEZONE`, so database defaults such as `CURRENT_TIMESTAMP` agree with the timestamps Laravel writes.
 
-```
-POST   /login                    # User login
-POST   /logout                   # User logout
-POST   /register                 # User registration
-POST   /forgot-password         # Password reset request
-POST   /reset-password          # Password reset
-GET    /email/verify            # Email verification
-POST   /email/verification-notification  # Resend verification email
-```
+## Tests
 
-### User Management Endpoints
-
-```
-PUT    /user/profile-information  # Update profile
-PUT    /user/password            # Update password
-POST   /user/two-factor-authentication  # Enable 2FA
-DELETE /user/two-factor-authentication  # Disable 2FA
-```
-
-## 💾 Database
-
-### Database Configuration
-
-The project uses SQLite by default, but supports any database. Configure your database in `.env`:
-
-```env
-DB_CONNECTION=sqlite
-DB_DATABASE=database.sqlite
-```
-
-### Database Seeding
-
-The project includes database seeders to create initial data. Run migrations with seeders:
-
-```bash
-php artisan migrate --seed
-```
-
-This will create an initial user account that you can use to access the dashboard.
-
-### Key Models
-
-- `User.php`: User account information
-- `Profile.php`: Extended user profile data
-- `Session.php`: User session management
-
-### Migrations
-
-All database schemas are defined in migrations under `database/migrations/`. Key migrations:
-
-- User table
-- Password reset tokens
-- Failed jobs table
-- Sessions table
-- Two-factor authentication settings
-
-Run migrations with:
-
-```bash
-php artisan migrate
-```
-
-## 🔄 Inertia Integration
-
-### Middleware
-
-The `HandleInertiaRequests` middleware (`app/Http/Middleware/HandleInertiaRequests.php`) manages:
-
-- Sharing common data with all pages
-- Managing the Inertia response
-- Handling version conflicts
-
-### Shared Data
-
-Common data shared with all pages through Inertia:
-
-```php
-public function share(Request $request): array
-{
-    return [
-        'auth' => [
-            'user' => $request->user(),
-        ],
-        'flash' => [
-            'message' => fn () => $request->session()->get('message')
-        ],
-    ];
-}
-```
-
-## 🧪 Testing
-
-### Test Structure
-
-```
-tests/
-├── Feature/          # Feature tests
-├── Unit/            # Unit tests
-└── TestCase.php     # Base test class
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-php artisan test
-
-# Run specific test
-php artisan test --filter=UserTest
-
-# Run with coverage
-php artisan test --coverage
-```
-
-## 🛠️ Development Tools
-
-### Artisan Commands
-
-Useful Artisan commands for development:
-
-```bash
-# Create a new controller
-php artisan make:controller UserController
-
-# Create a new model with migration
-php artisan make:model Post -m
-
-# Create a new test
-php artisan make:test UserTest
-
-# Clear cache
-php artisan cache:clear
-```
-
-### Code Style
-
-We use Laravel Pint for PHP code styling. Run:
-
-```bash
-./vendor/bin/pint
-```
-
-## 🔍 Debugging
-
-### Laravel Telescope
-
-If enabled, Laravel Telescope provides debugging tools for:
-
-- Request/Response information
-- Database queries
-- Cache operations
-- Queue jobs
-- Scheduled tasks
-
-Access Telescope at `/telescope` in development.
-
-### Error Handling
-
-Custom error handling is configured in `app/Exceptions/Handler.php`. Errors are:
-
-1. Logged to storage/logs
-2. Reported to error tracking service (if configured)
-3. Rendered appropriately based on the request type
+`php artisan test` runs the Pest tests in `tests/` against in-memory SQLite. They cover login, registration and the settings pages.
