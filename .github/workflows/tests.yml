@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, Development]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the run that is still in progress.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP and frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          coverage: none
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install PHP packages
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Install frontend packages
+        run: pnpm install --frozen-lockfile
+
+      # Runs on .env.testing and in-memory SQLite, so no .env or database server is needed.
+      - name: PHP tests
+        run: php artisan test
+
+      # The type-check reads Ziggy's types from vendor/, so it must come after composer install.
+      - name: TypeScript type-check
+        run: pnpm run types
+
+      - name: ESLint
+        run: pnpm run lint:check
+
+      - name: Frontend tests
+        run: pnpm test
