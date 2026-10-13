@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\RequestCommentController;
-Route::redirect('/', '/settings/profile')->name('home');
+Route::redirect('/', '/requests')->name('home');
 
 
 Route::middleware('auth')->group(function () 

@@ -31,7 +31,16 @@ Validation errors arrive through Inertia's standard `errors` prop, keyed by fiel
 
 ## What each page expects from the backend
 
-The pages below exist, but their routes do not yet. All of them require a signed-in user.
+All of these require a signed-in user. Every page exists; the backend routes are at different stages:
+
+| Route | Backend |
+|---|---|
+| `GET /requests` | Built |
+| `GET /requests/create`, `POST /requests` | Built |
+| `GET /requests/{id}` | Built, with `actions` allowing nothing for now |
+| `POST /requests/{id}/comments` | Built |
+| `POST /requests/{id}/take`, `/offer`, `/status` and `POST /assignments/{id}/respond` | Not built |
+| `GET /dashboard` | Not built |
 
 ### `GET /requests` renders `requests/index`
 
@@ -47,25 +56,25 @@ Each request summary:
 | Field | Type | Notes |
 |---|---|---|
 | `id` | number | Used in links to `/requests/{id}` |
-| `reference` | string | Displayed reference. The end-to-end test expects the form `CC-` followed by digits. |
+| `reference` | string | Displayed reference, `CC-` followed by digits, such as `CC-2026000336` |
 | `status` | one of the five statuses | |
 | `category` | string or null | The category name, not its id |
 | `location`, `area`, `description` | string | |
 | `requestor`, `assignee` | string or null | Names, not ids |
-| `overdue` | boolean | Shows an "Overdue" badge |
+| `overdue` | boolean | Shows an "Overdue" badge. True when the request is not resolved or closed and was submitted more than 7 days ago. |
 | `created_at`, `updated_at` | ISO date string | |
 
 Query parameters the filter form sends (all optional; empty ones are omitted):
 
 | Parameter | Meaning |
 |---|---|
-| `q` | Free-text search over reference, location or text |
+| `q` | Free-text search, ignoring case, over location and description. A whole reference (`CC-2026000336` or `2026000336`) also matches. |
 | `status` | One status value |
 | `category_id` | A category id |
 | `from`, `to` | Dates as `YYYY-MM-DD` |
 | `mine` | Present when "Assigned to me" is ticked. Only offered to staff and management. |
 
-The page title and columns change for requestors, who are expected to see only their own requests.
+The page title and columns change for requestors. The server decides which requests are listed: requestors get only their own, staff get unassigned requests and those assigned to them, and management gets all of them. The list is newest first, 50 per page; there is no sort parameter yet. An invalid `status` or date comes back as a validation error.
 
 ### `GET /requests/create` renders `requests/create`
 
@@ -77,15 +86,15 @@ The page title and columns change for requestors, who are expected to see only t
 
 Body: `{ category_id: number, location: string, area: string, description: string }`, already trimmed.
 
-The client applies these rules first, and the server is expected to enforce the same ones:
+The client applies these rules first, and the server enforces the same ones:
 
 | Field | Rule |
 |---|---|
-| `category_id` | Required |
+| `category_id` | Required, and must be an active category |
 | `location`, `area` | Required, at most 255 characters |
 | `description` | Required, 10 to 2000 characters |
 
-On failure, return validation errors keyed `category_id`, `location`, `area`, `description`. On success, the end-to-end test expects a redirect to the new request's page with a flash message containing "Request submitted".
+On failure the server returns validation errors keyed `category_id`, `location`, `area`, `description`. On success it redirects to the new request's page with the flash message "Request submitted. Your reference is CC-…", which the end-to-end test looks for.
 
 ### `GET /requests/{id}` renders `requests/show`
 
@@ -96,7 +105,9 @@ On failure, return validation errors keyed `category_id`, `location`, `area`, `d
 | `comments` | `[{ id, text, is_resolution, by, role, at }]` |
 | `actions` | What the current user may do; see below |
 
-`actions`:
+The server returns 403 for a request the user may not see and 404 for one that does not exist. `history` and `comments` are oldest first.
+
+`actions` (until assignment and status changes are built, the server sends empty `transitions` and `staff`, `false` for both flags and `null` for `pendingOfferId`):
 
 | Field | Type | Effect on the page |
 |---|---|---|
@@ -113,10 +124,10 @@ On failure, return validation errors keyed `category_id`, `location`, `area`, `d
 | `POST /requests/{id}/status` | `{ status, version, note }` | `version` is the value the page loaded, for the stale-write check. `note` is filled in only when moving to `resolved`. Errors are shown for the keys `status`, `note` and `request` (use `request` for conflicts such as a stale version). |
 | `POST /requests/{id}/take` | none | Staff self-assign |
 | `POST /requests/{id}/offer` | `{ assigned_to }` | A staff user id. Errors keyed `assigned_to`. |
-| `POST /requests/{id}/comments` | `{ body }` | Errors keyed `body` |
+| `POST /requests/{id}/comments` | `{ body }` | Built. Required, at most 2000 characters. Errors keyed `body`. Anyone who may view the request may comment. Sets the flash message "Comment added." |
 | `POST /assignments/{id}/respond` | `{ decision }` | `accept` or `decline` |
 
-Each should redirect back to the request page so it reloads with fresh data.
+Each redirects back to the request page so it reloads with fresh data. Only the comments route exists so far.
 
 ### `GET /dashboard` renders `dashboard`
 
@@ -132,17 +143,21 @@ Management only. The end-to-end test expects a 403 for other roles.
 
 ### Navigation the frontend assumes
 
-- The sidebar logo and the first menu item link to `/requests`. `/` and the after-login redirect currently go to `/settings/profile` and should move to `/requests` once it exists (`routes/web.php` and `home` in `config/fortify.php`).
+- The sidebar logo and the first menu item link to `/requests`. `/` and the redirect after login or registration go there too (`routes/web.php` and `home` in `config/fortify.php`).
 - The "Dashboard" link is shown only when `auth.user.role` is `management`.
 
-## Differences from the current database schema
+## Where the frontend's names differ from the database
 
-| Frontend expects | Schema has |
-|---|---|
-| `reference` as a string such as `CC-123` | `reference_number` as a number |
-| `overdue` flag and an `overdue_days` threshold | Nothing defines when a request is overdue |
-| Comment `text` in responses, `body` on submit | Column `comment` |
+The backend converts between the two, so pages can rely on the left-hand column.
+
+| Frontend uses | Database has | How the backend bridges it |
+|---|---|---|
+| `reference` as a string such as `CC-2026000336` | `reference_number` as a number | Adds the `CC-` prefix when sending |
+| `overdue` flag and an `overdue_days` threshold | No overdue column | Calculated: not resolved or closed, and submitted more than 7 days ago |
+| Comment `text` in responses, `body` on submit | Column `comment` | Renamed in both directions |
 
 ## What the end-to-end tests need
 
-`e2e/` signs in as three seeded users, one per role, with the addresses listed in `e2e/helpers.js`. It also expects categories named "IT support" and "Lost property", with "Lost property" having id 4, and at least one existing request for the dashboard totals.
+`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. They also need the assignment, status and dashboard routes, which are not built.
+
+The other expectations are met by the seeders: categories named "IT support" and "Lost property", with "Lost property" having id 4, and existing requests for the dashboard totals.

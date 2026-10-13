@@ -28,7 +28,7 @@ Log in with one of the seeded test accounts. They all share the test password no
 | `lerato.mokoena@example.com` | Staff |
 | `grace.naidoo@example.com` | Management |
 
-After logging in, choose "Requests" in the sidebar or go to http://127.0.0.1:8000/requests. Press Ctrl+C in a terminal to stop that server.
+After logging in you land on the requests list at http://127.0.0.1:8000/requests. Press Ctrl+C in a terminal to stop that server.
 
 To reset the database to the seeded test data:
 
