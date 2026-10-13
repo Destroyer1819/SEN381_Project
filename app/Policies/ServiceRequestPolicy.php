@@ -21,6 +21,10 @@ class ServiceRequestPolicy
         default => $serviceRequest->requestor_id === $user->id,
         };
     }
+    public function comment(User $user, ServiceRequest $serviceRequest): bool
+    {
+        return $this->view($user, $serviceRequest);
+    }
 
 
 

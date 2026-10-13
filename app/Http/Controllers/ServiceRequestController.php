@@ -23,9 +23,11 @@ class ServiceRequestController extends Controller
 
     public function create(): Response
     {
+        
         return Inertia::render('requests/create', 
         [
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            
         ]);
     }
     public function store(StoreServiceRequest $request): RedirectResponse
@@ -55,7 +57,7 @@ class ServiceRequestController extends Controller
 
             return $serviceRequest;
         }), 0, fn ($e) => $e instanceof UniqueConstraintViolationException);
-
+        
         return to_route('requests.show', $serviceRequest)
             ->with('success', 'Request submitted. Your reference is CC-'.$serviceRequest->reference_number.'.');
     }

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ServiceRequestController;
+use App\Http\Controllers\RequestCommentController;
 Route::redirect('/', '/settings/profile')->name('home');
 
 
@@ -14,6 +15,10 @@ Route::middleware('auth')->group(function ()
         ->name('requests.show');
         Route::get('/requests/create', [ServiceRequestController::class, 'create'])->name('requests.create');
         Route::post('/requests', [ServiceRequestController::class, 'store'])->name('requests.store');
+        Route::post('/requests/{serviceRequest}/comments', [RequestCommentController::class, 'store'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.comments.store');
+        
     });
 
 require __DIR__.'/settings.php';
