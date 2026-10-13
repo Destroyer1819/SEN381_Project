@@ -2,7 +2,7 @@
 
 ## Running the app
 
-CivicConnect is a Laravel 12 backend with a React frontend, on PostgreSQL. First-time setup (installing packages, creating `.env` and the database) is in [docs/getting-started.md](docs/getting-started.md).
+CivicConnect is a Laravel 13 backend with a React frontend, on PostgreSQL. First-time setup (installing packages, creating `.env` and the database) is in [docs/getting-started.md](docs/getting-started.md).
 
 Once that is done, open two terminals in the repository root and leave both running.
 
