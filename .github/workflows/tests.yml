@@ -59,3 +59,5 @@ jobs:
 
       - name: Frontend tests
         run: pnpm test
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
