@@ -1,6 +1,6 @@
 # Getting started
 
-CivicConnect is a Laravel 12 application with a React 19 and TypeScript frontend, connected through Inertia 3, on PostgreSQL.
+CivicConnect is a Laravel 13 application with a React 19 and TypeScript frontend, connected through Inertia 3, on PostgreSQL.
 
 ## Prerequisites
 
