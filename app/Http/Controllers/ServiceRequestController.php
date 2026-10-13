@@ -11,11 +11,54 @@ use Inertia\Response;
 use App\Models\RequestComment;
 use App\Models\RequestStatusHistory;
 use Illuminate\Support\Facades\Gate;
+use App\Http\Requests\StoreServiceRequest;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 
 class ServiceRequestController extends Controller
 {
     private const STATUSES = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
 
+
+    public function create(): Response
+    {
+        return Inertia::render('requests/create', 
+        [
+            'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+    public function store(StoreServiceRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+        $data = $request->validated();
+
+        $serviceRequest = retry(3, fn () => DB::transaction(function () use ($data, $user) 
+        {
+            $first = now()->year * 1000000;
+            $last = ServiceRequest::whereBetween('reference_number', [$first, $first + 999999])
+                ->max('reference_number');
+
+            $serviceRequest = ServiceRequest::create
+            ([
+                ...$data,
+                'requestor_id' => $user->id,
+                'reference_number' => ($last ?? $first) + 1,
+            ]);
+
+            $serviceRequest->history()->create
+            ([
+                'old_status' => null,
+                'new_status' => 'open',
+                'changed_by' => $user->id,
+            ]);
+
+            return $serviceRequest;
+        }), 0, fn ($e) => $e instanceof UniqueConstraintViolationException);
+
+        return to_route('requests.show', $serviceRequest)
+            ->with('success', 'Request submitted. Your reference is CC-'.$serviceRequest->reference_number.'.');
+    }
     //index method
     public function index(Request $request): Response
     {
@@ -135,6 +178,7 @@ class ServiceRequestController extends Controller
             ],
         ]);
     }
+
     
 
 }

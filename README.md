@@ -1,4 +1,43 @@
 # SEN381_Project
+
+## Running the app
+
+CivicConnect is a Laravel 12 backend with a React frontend, on PostgreSQL. First-time setup (installing packages, creating `.env` and the database) is in [docs/getting-started.md](docs/getting-started.md).
+
+Once that is done, open two terminals in the repository root and leave both running.
+
+Terminal 1, the backend:
+
+```bash
+php artisan serve
+```
+
+Terminal 2, the frontend:
+
+```bash
+pnpm run dev
+```
+
+Then open http://127.0.0.1:8000. Vite also prints an address on port 5173, but that only serves assets.
+
+Log in with one of the seeded test accounts. They all share the test password noted at the top of [database/seeders/DatabaseSeeder.php](database/seeders/DatabaseSeeder.php).
+
+| Address | Role |
+|---|---|
+| `thandi.nkosi@example.com` | Requestor |
+| `lerato.mokoena@example.com` | Staff |
+| `grace.naidoo@example.com` | Management |
+
+After logging in, choose "Requests" in the sidebar or go to http://127.0.0.1:8000/requests. Press Ctrl+C in a terminal to stop that server.
+
+To reset the database to the seeded test data:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+---
+
 # CivicConnect — Milestone 1 Working Plan
 *Engineering Foundation & Requirements Baseline (PED v1.0)*
 

@@ -12,6 +12,8 @@ Route::middleware('auth')->group(function ()
         Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show'])
         ->whereNumber('serviceRequest')
         ->name('requests.show');
+        Route::get('/requests/create', [ServiceRequestController::class, 'create'])->name('requests.create');
+        Route::post('/requests', [ServiceRequestController::class, 'store'])->name('requests.store');
     });
 
 require __DIR__.'/settings.php';
