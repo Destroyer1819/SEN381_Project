@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\RequestCommentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RequestAssignmentController;
 
 Route::redirect('/', '/requests')->name('home');
 
@@ -29,6 +30,9 @@ Route::middleware('auth')->group(function ()
         ->can('view-dashboard')
         ->name('dashboard');
         
+        Route::post('/requests/{serviceRequest}/take', [RequestAssignmentController::class, 'take'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.take');
         
     });
 

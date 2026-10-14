@@ -172,7 +172,7 @@ class ServiceRequestController extends Controller
             'actions' => 
             [
                 'transitions' => [],
-                'canTake' => false,
+                'canTake' => Gate::allows('take', $serviceRequest),
                 'canOffer' => false,
                 'staff' => [],
                 'pendingOfferId' => null,

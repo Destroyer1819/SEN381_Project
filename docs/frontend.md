@@ -37,9 +37,10 @@ All of these require a signed-in user. Every page exists; the backend routes are
 |---|---|
 | `GET /requests` | Built |
 | `GET /requests/create`, `POST /requests` | Built |
-| `GET /requests/{id}` | Built, with `actions` allowing nothing for now |
+| `GET /requests/{id}` | Built; in `actions`, only `canTake` is live so far |
 | `POST /requests/{id}/comments` | Built |
-| `POST /requests/{id}/take`, `/offer`, `/status` and `POST /assignments/{id}/respond` | Not built |
+| `POST /requests/{id}/take` | Built |
+| `POST /requests/{id}/offer`, `/status` and `POST /assignments/{id}/respond` | Not built |
 | `GET /dashboard` | Built |
 
 ### `GET /requests` renders `requests/index`
@@ -107,12 +108,12 @@ On failure the server returns validation errors keyed `category_id`, `location`,
 
 The server returns 403 for a request the user may not see and 404 for one that does not exist. `history` and `comments` are oldest first.
 
-`actions` (until assignment and status changes are built, the server sends empty `transitions` and `staff`, `false` for both flags and `null` for `pendingOfferId`):
+`actions` (`canTake` is calculated; until the other routes are built, the server sends empty `transitions` and `staff`, `false` for `canOffer` and `null` for `pendingOfferId`):
 
 | Field | Type | Effect on the page |
 |---|---|---|
 | `transitions` | string[] | Statuses the user may move this request to. Empty hides the status form. |
-| `canTake` | boolean | Shows "Take this request" |
+| `canTake` | boolean | Shows "Take this request". True only for staff, on an open request with nobody assigned. |
 | `canOffer` | boolean | Shows the "Offer to" form |
 | `staff` | `[{ id, name }]` | Options for the offer form. Empty hides it. |
 | `pendingOfferId` | number or null | When set, shows Accept and Decline for that assignment |
@@ -122,12 +123,12 @@ The server returns 403 for a request the user may not see and 404 for one that d
 | Request | Body | Notes |
 |---|---|---|
 | `POST /requests/{id}/status` | `{ status, version, note }` | `version` is the value the page loaded, for the stale-write check. `note` is filled in only when moving to `resolved`. Errors are shown for the keys `status`, `note` and `request` (use `request` for conflicts such as a stale version). |
-| `POST /requests/{id}/take` | none | Staff self-assign |
+| `POST /requests/{id}/take` | none | Built. Staff self-assign; the request becomes `assigned`. Sets the flash message "You have taken this request." If someone else took it first, redirects back with an error under the `request` key. The page currently shows that key only inside the status form, which is hidden here, so the message is not displayed yet. |
 | `POST /requests/{id}/offer` | `{ assigned_to }` | A staff user id. Errors keyed `assigned_to`. |
 | `POST /requests/{id}/comments` | `{ body }` | Built. Required, at most 2000 characters. Errors keyed `body`. Anyone who may view the request may comment. Sets the flash message "Comment added." |
 | `POST /assignments/{id}/respond` | `{ decision }` | `accept` or `decline` |
 
-Each redirects back to the request page so it reloads with fresh data. Only the comments route exists so far.
+Each redirects back to the request page so it reloads with fresh data. The comments and take routes exist so far.
 
 ### `GET /dashboard` renders `dashboard`
 
@@ -160,6 +161,6 @@ The backend converts between the two, so pages can rely on the left-hand column.
 
 ## What the end-to-end tests need
 
-`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. The first journey also needs the assignment and status routes, which are not built.
+`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. The first journey also needs the status route, which is not built; the take step it uses now exists.
 
 The other expectations are met by the seeders: categories named "IT support" and "Lost property", with "Lost property" having id 4, and existing requests for the dashboard totals.

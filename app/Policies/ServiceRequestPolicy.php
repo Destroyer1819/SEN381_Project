@@ -26,6 +26,11 @@ class ServiceRequestPolicy
         return $this->view($user, $serviceRequest);
     }
 
-
+    public function take(User $user, ServiceRequest $serviceRequest): bool
+    {
+        return $user->role === 'staff'
+        && $serviceRequest->status === 'open'
+        && $serviceRequest->assigned_to === null;
+    }
 
 }
