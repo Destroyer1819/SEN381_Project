@@ -2,13 +2,23 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ServiceRequestController;
-// The frontend treats /requests as home. Until the request routes exist, send users to the settings page.
-Route::redirect('/', '/settings/profile')->name('home');
+use App\Http\Controllers\RequestCommentController;
+Route::redirect('/', '/requests')->name('home');
 
 
 Route::middleware('auth')->group(function () 
     {
-        Route::get('/requests', [ServiceRequestController::class, 'index'])->name('requests.index');
+        Route::get('/requests', [ServiceRequestController::class, 'index'])
+        ->name('requests.index');
+        Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.show');
+        Route::get('/requests/create', [ServiceRequestController::class, 'create'])->name('requests.create');
+        Route::post('/requests', [ServiceRequestController::class, 'store'])->name('requests.store');
+        Route::post('/requests/{serviceRequest}/comments', [RequestCommentController::class, 'store'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.comments.store');
+        
     });
 
 require __DIR__.'/settings.php';

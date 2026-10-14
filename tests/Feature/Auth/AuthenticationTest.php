@@ -17,7 +17,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/settings/profile');
+    $response->assertRedirect('/requests');
 });
 
 test('users can not authenticate with invalid password', function () {

@@ -1,6 +1,6 @@
 # Getting started
 
-CivicConnect is a Laravel 12 application with a React 19 and TypeScript frontend, connected through Inertia 3, on PostgreSQL.
+CivicConnect is a Laravel 13 application with a React 19 and TypeScript frontend, connected through Inertia 3, on PostgreSQL.
 
 ## Prerequisites
 
@@ -35,7 +35,25 @@ Run these from the repository root.
     php artisan migrate --seed
     ```
 
-    The seeded login is defined in `database/seeders/DatabaseSeeder.php`.
+    This creates the 7 categories, 54 test users and 310 test requests. Set `SEED_REQUESTS` in `.env` to change the number of generated requests.
+
+    Three of the seeded logins, one per role. They share the test password noted at the top of `database/seeders/DatabaseSeeder.php`:
+
+    | Address | Role |
+    |---|---|
+    | `thandi.nkosi@example.com` | Requestor |
+    | `lerato.mokoena@example.com` | Staff |
+    | `grace.naidoo@example.com` | Management |
+
+## After pulling new changes
+
+Other people's changes can add packages or migrations. If something stops working after a pull, run:
+
+```bash
+composer install
+pnpm install
+php artisan migrate
+```
 
 ## Running the site
 
@@ -49,7 +67,7 @@ php artisan serve
 pnpm run dev
 ```
 
-Open http://127.0.0.1:8000. Vite prints its own address on port 5173, but that only serves assets.
+Open http://127.0.0.1:8000, which takes you to the login page and then to `/requests`. Vite prints its own address on port 5173, but that only serves assets.
 
 ## Checks
 
@@ -60,7 +78,9 @@ Open http://127.0.0.1:8000. Vite prints its own address on port 5173, but that o
 | `pnpm run types` | TypeScript type-check |
 | `pnpm run lint:check` | ESLint |
 | `pnpm run format:check` | Prettier, over `resources/` |
-| `pnpm run e2e` | Playwright journeys; needs the running site and the request backend |
+| `pnpm run e2e` | Playwright journeys; needs the running site and the request backend, and cannot pass yet (see [frontend.md](frontend.md)) |
+
+The first four also run automatically on GitHub for every pull request, from `.github/workflows/tests.yml`.
 
 ## Database changes
 
