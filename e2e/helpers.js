@@ -2,10 +2,12 @@ import { expect } from '@playwright/test';
 
 export const PASSWORD = process.env.E2E_PASSWORD ?? process.env.SEED_PASSWORD ?? 'password';
 
+// Accounts created by database/seeders/ScenarioSeeder.php (run: php artisan migrate:fresh --seed).
+// Every seeded password is 'password'. Override with E2E_* variables to test against other accounts.
 export const USERS = {
-    requestor: 'requestor1@civicconnect.test',
-    staff: 'staff1@civicconnect.test',
-    management: 'management@civicconnect.test',
+    requestor: process.env.E2E_REQUESTOR ?? 'thandi.nkosi@example.com', // requestor (user 1)
+    staff: process.env.E2E_STAFF ?? 'lerato.mokoena@example.com', // staff (user 5)
+    management: process.env.E2E_MANAGEMENT ?? 'grace.naidoo@example.com', // management (user 8)
 };
 
 export async function login(page, email) {

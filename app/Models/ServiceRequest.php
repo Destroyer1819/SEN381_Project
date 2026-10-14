@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Expr\FuncCall;
 
 class ServiceRequest extends Model
 {
+    use Prunable;
+    public const Retention_Years = 5;
+
     protected $fillable = 
     [
         'reference_number','requestor_id','category_id',
@@ -60,5 +65,27 @@ class ServiceRequest extends Model
                 ->whereNull('assigned_to')
                 ->orWhere('assigned_to', $user->id));
         }
+    }
+
+    public function prunable(): Builder
+    {
+        return static::where('updated_at', "<", now()->subYears(self::Retention_Years));
+    }
+
+    Protected function pruning(): void 
+    {
+        $this->history()->delete();
+        $this->assignments()->delete();
+        $this->comments()->delete();
+    }
+
+    //added for a atomicity. either everything succeeds, or everything fails.
+    public function prune()
+    {
+    return DB::transaction(function()
+        {
+        $this->pruning();
+        return $this->delete();
+        });
     }
 }
