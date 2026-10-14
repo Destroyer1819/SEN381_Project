@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 class ServiceRequest extends Model
 {
+    use HasFactory;
     public const STATUSES = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
 
     public const OVERDUE_DAYS = 7;
@@ -54,16 +56,18 @@ class ServiceRequest extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if ($user->role === 'requestor') 
+        if ($user->role === 'management') 
         {
-            $query->where('requestor_id', $user->id);
+            return;
         } 
         elseif ($user->role === 'staff') 
         {
             $query->where(fn (Builder $q) => $q
                 ->whereNull('assigned_to')
                 ->orWhere('assigned_to', $user->id));
+                return;
         }
+        $query ->where('requestor_id',$user->id);
     }
 
     public function scopeOverdue(Builder $query) : void 
