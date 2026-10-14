@@ -1,2 +1,2 @@
 allowBuilds:
-  esbuild: true
+  esbuild: '>=1.11.0'
