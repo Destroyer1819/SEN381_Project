@@ -1,6 +1,6 @@
 # Backend
 
-Laravel 13 on PHP 8.4 or later, with PostgreSQL. This page describes what exists today. Listing, viewing, submitting and commenting on requests are built; assignment, status changes and the dashboard are not.
+Laravel 13 on PHP 8.4 or later, with PostgreSQL. This page describes what exists today. Listing, viewing, submitting and commenting on requests are built, as is the management dashboard; assignment and status changes are not.
 
 ## Authentication
 
@@ -30,6 +30,7 @@ All request routes are in `routes/web.php` and require a signed-in user.
 | `POST /requests` | `ServiceRequestController@store` | Saves a request; validated by `app/Http/Requests/StoreServiceRequest.php` |
 | `GET /requests/{id}` | `ServiceRequestController@show` | Detail with status history and comments |
 | `POST /requests/{id}/comments` | `RequestCommentController@store` | Adds a comment |
+| `GET /dashboard` | `DashboardController` | Management statistics; other roles get 403 |
 
 The models are in `app/Models/`, one per table. The tables do not follow Laravel's naming defaults, so each model sets its own table name, timestamps and foreign keys.
 
@@ -48,15 +49,19 @@ The rule is written twice and the two must stay in step: `ServiceRequest::scopeV
 - A new request gets the next reference number for the current year, in the form year followed by a six-digit counter (`2026000336`). Pages show it as `CC-2026000336`.
 - A new request and its first status history row are written in one database transaction.
 - `status`, `assigned_to` and `version` are not mass assignable, so form input cannot set them.
-- A request is overdue when it is not `resolved` or `closed` and was submitted more than 7 days ago.
+- A request is overdue when it is not `resolved` or `closed` and was submitted more than 7 days ago. The rule lives on the model: `ServiceRequest::OVERDUE_DAYS`, `isOverdue()` for one request, and the `overdue()` query scope for counting. `ServiceRequest::STATUSES` is the single list of status values.
 - Adding a comment updates the request's `updated_at`. Resolution notes are not written through the comments route.
+
+### Dashboard
+
+`GET /dashboard` is protected by the `view-dashboard` gate, defined in `app/Providers/AppServiceProvider.php`, which allows only the `management` role. It counts requests in the database with `GROUP BY` queries, so its cost does not grow with the number of rows sent to the page. The optional `category_id`, `from` and `to` filters apply to every figure.
 
 ### Not built yet
 
 - Assignment: `POST /requests/{id}/take`, `POST /requests/{id}/offer`, `POST /assignments/{id}/respond`
 - Status changes: `POST /requests/{id}/status`
-- `GET /dashboard`
 - Sorting the list, and email notification of status changes
+- Average time to resolution for the dashboard (FR-024)
 
 Until assignment and status changes exist, the detail page is sent an `actions` object that allows nothing.
 

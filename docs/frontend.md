@@ -40,7 +40,7 @@ All of these require a signed-in user. Every page exists; the backend routes are
 | `GET /requests/{id}` | Built, with `actions` allowing nothing for now |
 | `POST /requests/{id}/comments` | Built |
 | `POST /requests/{id}/take`, `/offer`, `/status` and `POST /assignments/{id}/respond` | Not built |
-| `GET /dashboard` | Not built |
+| `GET /dashboard` | Built |
 
 ### `GET /requests` renders `requests/index`
 
@@ -131,15 +131,17 @@ Each redirects back to the request page so it reloads with fresh data. Only the 
 
 ### `GET /dashboard` renders `dashboard`
 
-Management only. The end-to-end test expects a 403 for other roles.
+Management only. Other roles get a 403, which the end-to-end test checks.
 
 | Prop | Shape |
 |---|---|
-| `filters` | `{ category_id?, from?, to? }` echoed back |
-| `categories` | `[{ id, name }]` |
+| `filters` | `{ category_id?, from?, to? }` echoed back; only the filters that were sent |
+| `categories` | `[{ id, name }]`, the active categories, for the filter dropdown |
 | `stats` | `{ total, by_status, overdue, overdue_days, by_category }` |
 
-`stats.by_status` is an object of status to count, `stats.by_category` is `[{ name, total }]`, and `stats.overdue_days` is the threshold shown in the "Overdue (> N days)" label. The filter form sends `category_id`, `from` and `to` as query parameters.
+`stats.by_status` is an object of status to count. It always has all five statuses, in workflow order, with 0 for any that have no requests. `stats.by_category` is `[{ name, total }]`, highest first, listing only categories that have requests in the filtered period, so it can be an empty list. `stats.overdue_days` is the threshold shown in the "Overdue (> N days)" label, currently 7.
+
+The filter form sends `category_id`, `from` and `to` as query parameters, and every figure respects all three. An invalid date comes back as a validation error.
 
 ### Navigation the frontend assumes
 
@@ -158,6 +160,6 @@ The backend converts between the two, so pages can rely on the left-hand column.
 
 ## What the end-to-end tests need
 
-`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. They also need the assignment, status and dashboard routes, which are not built.
+`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. The first journey also needs the assignment and status routes, which are not built.
 
 The other expectations are met by the seeders: categories named "IT support" and "Lost property", with "Lost property" having id 4, and existing requests for the dashboard totals.

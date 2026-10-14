@@ -10,6 +10,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ServiceRequest extends Model
 {
+    public const STATUSES = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
+
+    public const OVERDUE_DAYS = 7;
+
     protected $fillable = 
     [
         'reference_number','requestor_id','category_id',
@@ -61,4 +65,18 @@ class ServiceRequest extends Model
                 ->orWhere('assigned_to', $user->id));
         }
     }
+
+    public function scopeOverdue(Builder $query) : void 
+    {
+        $query->whereNotIn('status',['resolved','closed'])
+        ->where('created_at','<',now()->subDays(self::OVERDUE_DAYS));
+        
+    }
+
+    public function isOverdue() : bool 
+    {
+        return !in_array($this->status, ['resolved','closed'])
+        && $this->created_at->lt(now()->subDays(self::OVERDUE_DAYS));
+    }
+
 }

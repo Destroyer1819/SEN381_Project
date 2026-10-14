@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 
 class ServiceRequestController extends Controller
 {
-    private const STATUSES = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
+    
 
 
     public function create(): Response
@@ -69,7 +69,7 @@ class ServiceRequestController extends Controller
         $filters = $request->validate
         ([
             'q' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', Rule::in(self::STATUSES)],
+            'status' => ['nullable', Rule::in(ServiceRequest::STATUSES)],
             'category_id' => ['nullable', 'integer'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -106,7 +106,7 @@ class ServiceRequestController extends Controller
             'requests' => $requests,
             'filters' => [...$filters, 'mine' => $mine],
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'statuses' => self::STATUSES,
+            'statuses' => ServiceRequest::STATUSES,
         ]);
     }
     //moved to a method for through to be easily updated for later
@@ -124,8 +124,7 @@ class ServiceRequestController extends Controller
             'description' => $r->description,
             'requestor' => $r->requestor?->name,
             'assignee' => $r->assignee?->name,
-            'overdue' => ! in_array($r->status, ['resolved', 'closed'])
-                && $r->created_at->lt(now()->subDays(7)),
+            'overdue' => $r->isOverdue(),
             'created_at' => $r->created_at->toIso8601String(),
             'updated_at' => $r->updated_at->toIso8601String(),            
         ];
