@@ -1,2 +1,4 @@
 allowBuilds:
-  esbuild: '>=1.11.0'
+  esbuild: true
+overrides:
+  shell-quote: '>=1.11.0'
