@@ -32,5 +32,10 @@ class ServiceRequestPolicy
         && $serviceRequest->status === 'open'
         && $serviceRequest->assigned_to === null;
     }
+    
+    public function changeStatus(User $user, ServiceRequest $serviceRequest): bool
+    {
+        return $user->role === 'staff' && $serviceRequest->assigned_to === $user->id;
+    }
 
 }

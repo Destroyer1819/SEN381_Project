@@ -5,6 +5,7 @@ use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\RequestCommentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RequestAssignmentController;
+use App\Http\Controllers\RequestStatusController;
 
 Route::redirect('/', '/requests')->name('home');
 
@@ -33,6 +34,10 @@ Route::middleware('auth')->group(function ()
         Route::post('/requests/{serviceRequest}/take', [RequestAssignmentController::class, 'take'])
         ->whereNumber('serviceRequest')
         ->name('requests.take');
+
+        Route::post('/requests/{serviceRequest}/status', [RequestStatusController::class, 'store'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.status');
         
     });
 

@@ -15,6 +15,7 @@ use App\Http\Requests\StoreServiceRequest;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use App\Services\RequestStatusService;
 
 class ServiceRequestController extends Controller
 {
@@ -129,7 +130,7 @@ class ServiceRequestController extends Controller
             'updated_at' => $r->updated_at->toIso8601String(),            
         ];
     }
-    public function show(ServiceRequest $serviceRequest) : Response
+    public function show(ServiceRequest $serviceRequest, RequestStatusService $statuses) : Response
     {
         Gate::authorize('view', $serviceRequest);
 
@@ -171,7 +172,7 @@ class ServiceRequestController extends Controller
             ]),
             'actions' => 
             [
-                'transitions' => [],
+                'transitions' => Gate::allows('changeStatus', $serviceRequest) ? $statuses->allowedNext($serviceRequest->status): [],
                 'canTake' => Gate::allows('take', $serviceRequest),
                 'canOffer' => false,
                 'staff' => [],
@@ -179,6 +180,7 @@ class ServiceRequestController extends Controller
             ],
         ]);
     }
+
 
     
 
