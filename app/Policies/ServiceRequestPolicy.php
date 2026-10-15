@@ -28,7 +28,16 @@ class ServiceRequestPolicy
     {
         return $user->role === 'staff'
         && $serviceRequest->status === 'open'
-        && $serviceRequest->assigned_to === null;
+        && $serviceRequest->assigned_to === null
+        && ! $serviceRequest->pendingOffer()->exists(); // Take is blocked while an offer is pending (D-018)
+    }
+
+    public function offer(User $user, ServiceRequest $serviceRequest): bool
+    {
+        return in_array($user->role, ['staff', 'management'], true)
+        && $serviceRequest->status === 'open'
+        && $serviceRequest->assigned_to === null
+        && ! $serviceRequest->pendingOffer()->exists();
     }
 
     public function changeStatus(User $user, ServiceRequest $serviceRequest): bool

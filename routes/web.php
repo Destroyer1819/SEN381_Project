@@ -37,6 +37,14 @@ Route::middleware('auth')->group(function () {
         ->whereNumber('serviceRequest')
         ->name('requests.status');
 
+    Route::post('/requests/{serviceRequest}/offer', [RequestAssignmentController::class, 'offer'])
+        ->whereNumber('serviceRequest')
+        ->name('requests.offer');
+
+    Route::post('/assignments/{assignment}/respond', [RequestAssignmentController::class, 'respond'])
+        ->whereNumber('assignment')
+        ->name('assignments.respond');
+
 });
 
 require __DIR__.'/settings.php';

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\RequestComment;
 use App\Models\RequestStatusHistory;
 use App\Models\ServiceRequest;
+use App\Services\OfferService;
 use App\Services\RequestStatusService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -125,9 +126,12 @@ class ServiceRequestController extends Controller
         ];
     }
 
-    public function show(ServiceRequest $serviceRequest, RequestStatusService $statuses): Response
+    public function show(Request $request, ServiceRequest $serviceRequest, RequestStatusService $statuses, OfferService $offers): Response
     {
         Gate::authorize('view', $serviceRequest);
+
+        $canOffer = Gate::allows('offer', $serviceRequest);
+        $pending = $serviceRequest->pendingOffer;
 
         $serviceRequest->load([
             'category:id,name',
@@ -165,9 +169,16 @@ class ServiceRequestController extends Controller
                 'actions' => [
                     'transitions' => Gate::allows('changeStatus', $serviceRequest) ? $statuses->allowedNext($serviceRequest->status) : [],
                     'canTake' => Gate::allows('take', $serviceRequest),
-                    'canOffer' => false,
-                    'staff' => [],
-                    'pendingOfferId' => null,
+                    'canOffer' => $canOffer,
+                    'staff' => $canOffer
+                        ? $offers->eligibleStaff($serviceRequest, $request->user())->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values()
+                        : [],
+                    // Only the person the offer went to sees Accept / Decline
+                    'pendingOfferId' => $pending?->assigned_to === $request->user()->id ? $pending->id : null,
+                    // Everyone else on the staff side sees who it is waiting on; requestors see nothing
+                    'pendingOfferTo' => $pending && $pending->assigned_to !== $request->user()->id && $request->user()->role !== 'requestor'
+                        ? $pending->assignee?->name
+                        : null,
                 ],
             ]);
     }

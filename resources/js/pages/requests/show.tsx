@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { formatDateTime, statusLabel, transitionLabel, transitionNeedsNote } from '@/lib/workflow';
 import { type BreadcrumbItem } from '@/types';
 import type { CommentItem, HistoryItem, RequestDetail } from '@/types/civic';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent } from 'react';
 
 interface Actions {
@@ -17,6 +17,7 @@ interface Actions {
     canOffer: boolean;
     staff: { id: number; name: string }[];
     pendingOfferId: number | null;
+    pendingOfferTo: string | null;
 }
 
 function Panel({ title, children }: { title?: string; children: React.ReactNode }) {
@@ -58,7 +59,6 @@ function StatusForm({ request, transitions }: { request: RequestDetail; transiti
                         <InputError role="alert" message={form.errors.note} />
                     </div>
                 )}
-                <InputError role="alert" message={(form.errors as Record<string, string>).request} />
                 <Button type="submit" disabled={form.processing}>
                     Apply
                 </Button>
@@ -109,6 +109,8 @@ export default function Show({
     actions: Actions;
 }) {
     const commentForm = useForm({ body: '' });
+    // Refusals from Take, Offer, Accept/Decline and stale status changes all come back under "request"
+    const { errors } = usePage().props;
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Requests', href: '/requests' },
         { title: request.reference, href: `/requests/${request.id}` },
@@ -197,6 +199,8 @@ export default function Show({
                     </div>
 
                     <aside className="space-y-4">
+                        <InputError role="alert" message={errors.request} />
+
                         {actions.pendingOfferId && (
                             <Panel title="You were offered this request">
                                 <div className="flex gap-2">
@@ -205,6 +209,15 @@ export default function Show({
                                         Decline
                                     </Button>
                                 </div>
+                            </Panel>
+                        )}
+
+                        {actions.pendingOfferTo && (
+                            <Panel title="Assignment">
+                                <p className="text-muted-foreground text-sm">
+                                    Offered to {actions.pendingOfferTo}, waiting for a reply. It cannot be taken or offered to anyone else until they
+                                    answer.
+                                </p>
                             </Panel>
                         )}
 

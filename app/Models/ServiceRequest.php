@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class ServiceRequest extends Model
@@ -64,6 +65,12 @@ class ServiceRequest extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(RequestAssignment::class, 'request_id');
+    }
+
+    // The offer still waiting for an answer, if any (D-018)
+    public function pendingOffer(): HasOne
+    {
+        return $this->hasOne(RequestAssignment::class, 'request_id')->where('state', 'offered');
     }
 
     public function scopeVisibleTo(Builder $query, User $user): void

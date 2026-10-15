@@ -45,6 +45,8 @@ test('request is submitted, handled by staff and the requestor sees the result',
     // --- requestor sees the final state, the resolution note and the history
     await login(page, USERS.requestor);
     await page.getByRole('link', { name: reference }).click();
+    // Wait for the detail page: the list can hold other resolved requests from earlier runs
+    await expect(page.getByRole('heading', { level: 1, name: reference })).toBeVisible();
     await expect(page.locator('[data-status="resolved"]')).toBeVisible();
     await expect(page.getByText('Replaced the power cable.')).toBeVisible();
     await expect(page.getByText('In progress → Resolved')).toBeVisible();
