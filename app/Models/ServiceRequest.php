@@ -9,11 +9,19 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Expr\FuncCall;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+
+
 
 class ServiceRequest extends Model
 {
-    use Prunable;
+
+
+    use Prunable,HasFactory;
     public const Retention_Years = 5;
+    public const STATUSES = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
+    public const OVERDUE_DAYS = 7;
 
     protected $fillable = 
     [
@@ -55,16 +63,30 @@ class ServiceRequest extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if ($user->role === 'requestor') 
+        if ($user->role === 'management') 
         {
-            $query->where('requestor_id', $user->id);
+            return;
         } 
         elseif ($user->role === 'staff') 
         {
             $query->where(fn (Builder $q) => $q
                 ->whereNull('assigned_to')
                 ->orWhere('assigned_to', $user->id));
+                return;
         }
+        $query ->where('requestor_id',$user->id);
+    }
+    public function scopeOverdue(Builder $query) : void 
+    {
+        $query->whereNotIn('status',['resolved','closed'])
+        ->where('created_at','<',now()->subDays(self::OVERDUE_DAYS));
+        
+    }
+
+    public function isOverdue() : bool 
+    {
+        return !in_array($this->status, ['resolved','closed'])
+        && $this->created_at->lt(now()->subDays(self::OVERDUE_DAYS));
     }
 
     public function prunable(): Builder

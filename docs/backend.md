@@ -1,6 +1,6 @@
 # Backend
 
-Laravel 13 on PHP 8.4 or later, with PostgreSQL. This page describes what exists today. Listing, viewing, submitting and commenting on requests are built; assignment, status changes and the dashboard are not.
+Laravel 13 on PHP 8.4 or later, with PostgreSQL. This page describes what exists today. Listing, viewing, submitting and commenting on requests are built, as are the management dashboard and staff taking a request. Offering, accepting and declining assignments, and status changes, are not.
 
 ## Authentication
 
@@ -30,6 +30,8 @@ All request routes are in `routes/web.php` and require a signed-in user.
 | `POST /requests` | `ServiceRequestController@store` | Saves a request; validated by `app/Http/Requests/StoreServiceRequest.php` |
 | `GET /requests/{id}` | `ServiceRequestController@show` | Detail with status history and comments |
 | `POST /requests/{id}/comments` | `RequestCommentController@store` | Adds a comment |
+| `POST /requests/{id}/take` | `RequestAssignmentController@take` | Staff assign an open, unassigned request to themselves |
+| `GET /dashboard` | `DashboardController` | Management statistics; other roles get 403 |
 
 The models are in `app/Models/`, one per table. The tables do not follow Laravel's naming defaults, so each model sets its own table name, timestamps and foreign keys.
 
@@ -47,18 +49,32 @@ The rule is written twice and the two must stay in step: `ServiceRequest::scopeV
 
 - A new request gets the next reference number for the current year, in the form year followed by a six-digit counter (`2026000336`). Pages show it as `CC-2026000336`.
 - A new request and its first status history row are written in one database transaction.
-- `status`, `assigned_to` and `version` are not mass assignable, so form input cannot set them.
-- A request is overdue when it is not `resolved` or `closed` and was submitted more than 7 days ago.
+- `status`, `assigned_to` and `version` are not mass assignable, so form input cannot set them. Only the workflow controllers change them, with query-level updates.
+- A request is overdue when it is not `resolved` or `closed` and was submitted more than 7 days ago. The rule lives on the model: `ServiceRequest::OVERDUE_DAYS`, `isOverdue()` for one request, and the `overdue()` query scope for counting. `ServiceRequest::STATUSES` is the single list of status values.
 - Adding a comment updates the request's `updated_at`. Resolution notes are not written through the comments route.
+
+### Taking a request
+
+`ServiceRequestPolicy::take()` allows it only when the user is `staff`, the request is `open` and nobody is assigned. In one transaction, `RequestAssignmentController@take`:
+
+1. Sets the status to `assigned`, sets `assigned_to` to the user and adds 1 to `version`.
+2. Writes a status history row, `open` to `assigned`, by the user.
+3. Writes a `request_assignments` row with state `self_assigned`, where `offered_by` is the user.
+
+The update in step 1 repeats the policy's conditions, so if two staff members click Take at the same time only the first succeeds. The other is redirected back with an error under the `request` key and nothing is written for them.
+
+### Dashboard
+
+`GET /dashboard` is protected by the `view-dashboard` gate, defined in `app/Providers/AppServiceProvider.php`, which allows only the `management` role. It counts requests in the database with `GROUP BY` queries, so its cost does not grow with the number of rows sent to the page. The optional `category_id`, `from` and `to` filters apply to every figure.
 
 ### Not built yet
 
-- Assignment: `POST /requests/{id}/take`, `POST /requests/{id}/offer`, `POST /assignments/{id}/respond`
+- Assignment: `POST /requests/{id}/offer`, `POST /assignments/{id}/respond`. These wait on a team decision about what status a request has after an offer is declined.
 - Status changes: `POST /requests/{id}/status`
-- `GET /dashboard`
 - Sorting the list, and email notification of status changes
+- Average time to resolution for the dashboard (FR-024)
 
-Until assignment and status changes exist, the detail page is sent an `actions` object that allows nothing.
+In the detail page's `actions`, only `canTake` is calculated so far. The rest are sent as allowing nothing until their routes exist.
 
 ## Shared page data
 
@@ -85,6 +101,16 @@ The PostgreSQL connection sets its session time zone to `APP_TIMEZONE`, so datab
 
 ## Tests
 
-`php artisan test` runs the Pest tests in `tests/` against in-memory SQLite. They cover login, registration and the settings pages. There are no tests for the request routes yet.
+`php artisan test` runs the Pest tests in `tests/` against in-memory SQLite. They cover login, registration and the settings pages, plus the request features:
+
+| File | Covers |
+|---|---|
+| `RequestVisibilityTest.php` | Which requests each role sees in the list and can open (FR-011) |
+| `SubmitRequestTest.php` | Submitting, validation messages, guests |
+| `CommentTest.php` | Who may comment, empty comments |
+| `DashboardTest.php` | Management-only access and every figure |
+| `TakeRequestTest.php` | Who may take, the rows written, and the `canTake` flag |
+
+Test data comes from the factories in `database/factories/`. `ServiceRequestFactory` has an `assignedTo($staff)` state for requests that already have an assignee.
 
 `.github/workflows/tests.yml` runs the PHP tests, the TypeScript type-check, ESLint and the frontend tests on every pull request and on pushes to `main` and `Development`.
