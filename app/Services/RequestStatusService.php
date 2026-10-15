@@ -67,15 +67,17 @@ class RequestStatusService
                     'is_resolution' => true,
                 ]);
             }
+
+            // ShouldDispatchAfterCommit holds this until the transaction commits; a rollback drops it (D-009)
+            RequestStatusChanged::dispatch(
+                $request->id,
+                'CC-'.$request->reference_number,
+                $from,
+                $to,
+                $actor->id,
+                now()->toIso8601String(),
+                $request->requestor->email,
+            );
         });
-        RequestStatusChanged::dispatch(
-            $request->id,
-            'CC-'.$request->reference_number,
-            $from,
-            $to,
-            $actor->id,
-            now()->toIso8601String(),
-            $request->requestor->email,
-        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RequestStatusChanged;
 use App\Models\ServiceRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,6 +44,17 @@ class RequestAssignmentController extends Controller
                 'offered_by' => $user->id,
                 'state' => 'self_assigned',
             ]);
+
+            // Held until the transaction commits, so a failed take never emails the requester
+            RequestStatusChanged::dispatch(
+                $serviceRequest->id,
+                'CC-'.$serviceRequest->reference_number,
+                'open',
+                'assigned',
+                $user->id,
+                now()->toIso8601String(),
+                $serviceRequest->requestor->email,
+            );
 
             return true;
         });

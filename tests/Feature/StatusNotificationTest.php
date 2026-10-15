@@ -37,6 +37,30 @@ test('a stale change raises no event', function () {
     Event::assertNotDispatched(RequestStatusChanged::class);
 });
 
+// FR-006: requesters also hear when staff take their request
+test('taking a request raises RequestStatusChanged', function () {
+    Event::fake([RequestStatusChanged::class]);
+    $open = ServiceRequest::factory()->create();
+
+    $this->actingAs($this->staff)->post("/requests/{$open->id}/take");
+
+    Event::assertDispatched(RequestStatusChanged::class, fn (RequestStatusChanged $e) => $e->requestId === $open->id
+        && [$e->fromStatus, $e->toStatus] === ['open', 'assigned']
+        && $e->actorId === $this->staff->id
+        && $e->requesterEmail === $open->requestor->email);
+});
+
+// FR-006 negative: a refused take (request already assigned) must not email the requester
+test('a refused take raises no event', function () {
+    Event::fake([RequestStatusChanged::class]);
+    $other = User::factory()->create(['role' => 'staff']);
+    $taken = ServiceRequest::factory()->assignedTo($other)->create();
+
+    $this->actingAs($this->staff)->post("/requests/{$taken->id}/take");
+
+    Event::assertNotDispatched(RequestStatusChanged::class);
+});
+
 // D-011: the listener is wired up and runs on the queue
 test('the listener is registered and queued', function () {
     Event::fake();
