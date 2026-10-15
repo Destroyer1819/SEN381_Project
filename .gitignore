@@ -5,3 +5,5 @@
 /storage/*.key
 /bootstrap/cache/*.php
 /storage/logs
+.vs/
+.vite/
