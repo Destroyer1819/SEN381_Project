@@ -23,7 +23,7 @@ class StoreServiceRequest extends FormRequest
      */
     public function rules(): array
     {
-        return 
+        return
         [
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
             'location' => ['required', 'string', 'max:255'],
@@ -31,15 +31,16 @@ class StoreServiceRequest extends FormRequest
             'description' => ['required', 'string', 'min:10', 'max:2000'],
         ];
     }
+
     public function messages(): array
     {
-        return 
+        return
         [
-        'category_id.required' => 'Choose a category.',
-        'category_id.exists' => 'Choose a valid category.',
-        'location.required' => 'Enter the location.',
-        'area.required' => 'Enter the area.',
-        'description.required' => 'Describe the problem.',
+            'category_id.required' => 'Choose a category.',
+            'category_id.exists' => 'Choose a valid category.',
+            'location.required' => 'Enter the location.',
+            'area.required' => 'Enter the area.',
+            'description.required' => 'Describe the problem.',
         ];
     }
 }

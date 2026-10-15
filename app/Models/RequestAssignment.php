@@ -8,16 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RequestAssignment extends Model
 {
     const UPDATED_AT = null;
+
     protected $fillable =
-    [
-        'request_id','assigned_to','offered_by','state','responded_at'
-    ];
-    
-    
+        [
+            'request_id', 'assigned_to', 'offered_by', 'state', 'responded_at',
+        ];
+
     protected function casts(): array
     {
         return ['responded_at' => 'datetime'];
     }
+
     public function request(): BelongsTo
     {
         return $this->belongsTo(ServiceRequest::class, 'request_id');

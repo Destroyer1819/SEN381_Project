@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\RequestStatusChanged;
 use App\Exceptions\StaleRequestException;
 use App\Models\ServiceRequest;
 use App\Models\User;
@@ -50,7 +51,7 @@ class RequestStatusService
                 ->update($changes);
 
             if ($updated === 0) {
-                throw new StaleRequestException();
+                throw new StaleRequestException;
             }
 
             $request->history()->create([
@@ -66,8 +67,15 @@ class RequestStatusService
                     'is_resolution' => true,
                 ]);
             }
-
-            // Step 2: dispatch RequestStatusChanged here (it implements ShouldDispatchAfterCommit).
         });
+        RequestStatusChanged::dispatch(
+            $request->id,
+            'CC-'.$request->reference_number,
+            $from,
+            $to,
+            $actor->id,
+            now()->toIso8601String(),
+            $request->requestor->email,
+        );
     }
 }

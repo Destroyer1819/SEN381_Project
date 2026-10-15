@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\ServiceRequest;
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Category;
+use App\Models\ServiceRequest;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<ServiceRequest>
@@ -29,7 +29,8 @@ class ServiceRequestFactory extends Factory
             'status' => 'open',
         ];
     }
-    //shortcut so the test can write ServiceRequest::factory()->assignedTo($staff)->create()
+
+    // shortcut so the test can write ServiceRequest::factory()->assignedTo($staff)->create()
     public function assignedTo(User $staff): static
     {
         return $this->state(['status' => 'assigned', 'assigned_to' => $staff->id]);

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\ServiceRequest;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,18 +13,17 @@ class DashboardController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request) : Response
+    public function __invoke(Request $request): Response
     {
-        $filters = $request->validate
-        ([
-            'category_id' => ['nullable','integer'],
-            'from' =>['nullable','date'],
-            'to' => ['nullable','date']
+        $filters = $request->validate([
+            'category_id' => ['nullable', 'integer'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
         ]);
         $base = ServiceRequest::query()
-        ->when($filters['category_id'] ?? null, fn ($query, $id) => $query->where('category_id', $id))
-        ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('created_at', '>=', $from))
-        ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('created_at', '<=', $to));
+            ->when($filters['category_id'] ?? null, fn ($query, $id) => $query->where('category_id', $id))
+            ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('created_at', '>=', $from))
+            ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('created_at', '<=', $to));
 
         $byStatus = (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
         $byCategory = (clone $base)->selectRaw('category_id, count(*) as total')->groupBy('category_id')->pluck('total', 'category_id');
@@ -33,8 +32,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'filters' => $filters,
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'stats' => 
-            [
+            'stats' => [
                 'total' => $byStatus->sum(),
                 'by_status' => collect(ServiceRequest::STATUSES)
                     ->mapWithKeys(fn ($status) => [$status => $byStatus[$status] ?? 0]),
@@ -46,7 +44,6 @@ class DashboardController extends Controller
                     ->values(),
             ],
         ]);
-
 
     }
 }
