@@ -10,6 +10,7 @@ test('request is submitted, handled by staff and the requestor sees the result',
     // --- requestor submits
     await login(page, USERS.requestor);
     await page.getByRole('link', { name: 'New request' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Submit a request' })).toBeVisible();
     await page.getByLabel('Category').selectOption({ label: 'IT support' });
     await page.getByLabel('Location').fill('Room 204');
     await page.getByLabel('Area').fill('Admin block');

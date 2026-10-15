@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Models\ServiceRequest;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+//Schedules the pruning to be checked each day at 2 AM.
+Schedule::command('model:prune',[
+    '--model' => [ServiceRequest::class],
+])->dailyAt('02:00');
