@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RequestComment extends Model
 {
     const UPDATED_AT = null;
+
+    protected $touches = ['request'];
     
     protected $fillable =
     [
