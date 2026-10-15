@@ -1,28 +1,36 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "proto/civicconnect",
+    "name": "ferjal0/react-inertia-laravel-starter",
     "type": "project",
-    "description": "CivicConnect: civic service-request platform (SEN381 team project).",
+    "description": "The Laravel Inertia React Starter",
     "keywords": [
         "laravel",
-        "framework"
+        "inertia",
+        "react",
+        "shadcn-ui"
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
-        "inertiajs/inertia-laravel": "^2.0",
-        "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1",
-        "tightenco/ziggy": "^2.4"
+        "php": "^8.4",
+        "inertiajs/inertia-laravel": "^3.0",
+        "laravel/fortify": "^1.25",
+        "laravel/framework": "^13.0",
+        "laravel/tinker": "^3.0",
+        "nyholm/psr7": "^1.8",
+        "railsware/mailtrap-php": "^2.0",
+        "resend/resend-php": "^1.16",
+        "symfony/http-client": "^7.2",
+        "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "laravel/pail": "^1.2.2",
-        "laravel/pint": "^1.18",
-        "laravel/sail": "^1.41",
+        "laravel/pail": "^1.1",
+        "laravel/pint": "^1.13",
+        "laravel/sail": "^1.26",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^11.5.3"
+        "nunomaduro/collision": "^8.1",
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -48,29 +56,13 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
-            "@php artisan key:generate --ansi"
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "pnpm dlx concurrently -c \"#93c5fd,#fdba74\" \"php artisan serve\" \"pnpm run dev\" --names=server,vite"
-        ],
-        "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force --seed",
-            "pnpm install",
-            "pnpm run build"
-        ],
-        "test": [
-            "@php artisan config:clear --ansi",
-            "@php artisan test"
-        ],
-        "lint": [
-            "pint"
-        ],
-        "lint:check": [
-            "pint --test"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
         ]
     },
     "extra": {
@@ -87,6 +79,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }
