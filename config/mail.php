@@ -2,6 +2,12 @@
 
 return [
 
+
+    // Demo safeguard: when set, every email goes to this one address (see AppServiceProvider).
+    // this is for Demo purposes only, and should not be used in production.
+   'demo_to' => env('MAIL_DEMO_TO'),
+
+
     /*
     |--------------------------------------------------------------------------
     | Default Mailer
