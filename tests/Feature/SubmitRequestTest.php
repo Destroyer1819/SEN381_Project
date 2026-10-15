@@ -55,13 +55,25 @@ test('an unknown category is rejected with the custom message', function () {
     $response->assertSessionHasErrors(['category_id' => 'Choose a valid category.']);
 });
 
-test('a description under 10 characters is rejected', function () {
+// TC-BB-01 | FR-003 | boundary values for the description length rule (min:10, max:2000): each limit and one either side
+test('the description length is checked at its boundaries', function (int $length, bool $accepted) {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/requests', validRequest(['description' => 'too short']));
+    $response = $this->actingAs($user)->post('/requests', validRequest(['description' => str_repeat('a', $length)]));
 
-    $response->assertSessionHasErrors('description');
-});
+    if ($accepted) {
+        $response->assertSessionHasNoErrors();
+        expect(ServiceRequest::where('requestor_id', $user->id)->count())->toBe(1);
+    } else {
+        $response->assertSessionHasErrors('description');
+        expect(ServiceRequest::where('requestor_id', $user->id)->count())->toBe(0);
+    }
+})->with([
+    '9 characters' => [9, false],
+    '10 characters' => [10, true],
+    '2000 characters' => [2000, true],
+    '2001 characters' => [2001, false],
+]);
 
 test('guests cannot submit a request', function () {
     $this->post('/requests', [])->assertRedirect('/login');

@@ -46,6 +46,18 @@ jobs:
       - name: Install frontend packages
         run: pnpm install --frozen-lockfile
 
+      # Security gate: fails on any published advisory for an installed PHP package.
+      - name: Composer security audit
+        run: composer audit --no-interaction
+
+      # Security gate: fails on high or critical advisories; lower ones are reported in the log but do not block.
+      - name: pnpm security audit
+        run: pnpm audit --audit-level high
+
+      # Static code-quality gate: fails if any PHP file does not match the Laravel Pint style.
+      - name: PHP code style (Pint)
+        run: vendor/bin/pint --test
+
       # Runs on .env.testing and in-memory SQLite, so no .env or database server is needed.
       - name: PHP tests
         run: php artisan test

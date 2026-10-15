@@ -10,7 +10,7 @@ const categories = [
 const statuses = ['open', 'assigned', 'in_progress', 'resolved', 'closed'];
 
 describe('FilterBar', () => {
-    // TC-U-12 | FR-003 | applying sends only the filled-in fields (combinable filters)
+    // TC-U-12 | FR-013 | applying sends only the filled-in fields (combinable filters)
     it('applies only the filled-in filters', async () => {
         const onApply = vi.fn();
         const user = userEvent.setup();

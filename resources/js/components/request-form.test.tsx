@@ -16,7 +16,7 @@ async function fillValid(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('RequestForm', () => {
-    // TC-U-08 | FR-001 | negative: an empty form is blocked on the client and shows every error
+    // TC-U-08 | FR-003, FR-004 | negative: an empty form is blocked on the client and shows every error
     it('blocks an empty submission and shows errors', async () => {
         const onSubmit = vi.fn();
         const user = userEvent.setup();
@@ -47,7 +47,7 @@ describe('RequestForm', () => {
         expect(screen.queryAllByRole('alert')).toHaveLength(0);
     });
 
-    // TC-U-10 | FR-001 | the live character counter helps the user stay inside the limits
+    // TC-U-10 | FR-003, NFR-008 | the live character counter helps the user stay inside the limits
     it('counts description characters', async () => {
         const user = userEvent.setup();
         render(<RequestForm categories={categories} onSubmit={() => {}} />);

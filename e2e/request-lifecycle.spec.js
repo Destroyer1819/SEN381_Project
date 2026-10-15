@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { USERS, login, logout } from './helpers.js';
 
-// TC-E2E-01 | FR-001, FR-002, FR-003, FR-004, FR-005 | Critical journey across three screens and two roles:
+// FR numbers follow PED v3.0 section 4.1.
+// TC-E2E-01 | FR-001, FR-004, FR-006, FR-013, FR-014, FR-015, FR-017, FR-019, FR-020, FR-021 | Critical journey across three screens and two roles:
 // requestor submits -> staff finds, takes, works and resolves -> requestor sees the outcome and audit trail.
 test('request is submitted, handled by staff and the requestor sees the result', async ({ page }) => {
     const marker = `E2E-${Date.now()}`;
@@ -53,7 +54,7 @@ test('request is submitted, handled by staff and the requestor sees the result',
     await expect(page.getByRole('button', { name: 'Take this request' })).toHaveCount(0);
 });
 
-// TC-E2E-02 | FR-008 | Negative / unauthorised behaviour seen through the UI
+// TC-E2E-02 | FR-010, FR-011, NFR-002 | Negative / unauthorised behaviour seen through the UI
 test('a requestor is kept out of staff and management areas', async ({ page }) => {
     // not signed in
     await page.goto('/requests');
@@ -66,7 +67,7 @@ test('a requestor is kept out of staff and management areas', async ({ page }) =
     expect(response?.status()).toBe(403);
 });
 
-// TC-E2E-03 | FR-007 | Management sees dashboard totals that respond to a category filter
+// TC-E2E-03 | FR-023, FR-024 | Management sees dashboard totals that respond to a category filter
 test('management dashboard shows counts and can be filtered by category', async ({ page }) => {
     await login(page, USERS.management);
     await page.getByRole('link', { name: 'Dashboard' }).click();

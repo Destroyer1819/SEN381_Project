@@ -1,0 +1,58 @@
+{
+  "run_at": "2026-10-15T22:13:03.412Z",
+  "base_url": "http://127.0.0.1:8000",
+  "account": "grace.naidoo@example.com",
+  "repeat_per_scenario": 40,
+  "concurrency": 5,
+  "target": "p95 <= 500 ms per page of 50 rows (NFR-004: 1 s per 100 entries)",
+  "results": [
+    {
+      "scenario": "first page, no filters",
+      "path": "/requests",
+      "requests": 40,
+      "failures": 0,
+      "failure_statuses": [],
+      "p50_ms": 653,
+      "p95_ms": 770,
+      "max_ms": 778,
+      "throughput_per_s": 7.4,
+      "meets_target": false
+    },
+    {
+      "scenario": "text search",
+      "path": "/requests?q=water",
+      "requests": 40,
+      "failures": 0,
+      "failure_statuses": [],
+      "p50_ms": 662,
+      "p95_ms": 791,
+      "max_ms": 803,
+      "throughput_per_s": 7.2,
+      "meets_target": false
+    },
+    {
+      "scenario": "status + category filter",
+      "path": "/requests?status=open&category_id=1",
+      "requests": 40,
+      "failures": 0,
+      "failure_statuses": [],
+      "p50_ms": 595,
+      "p95_ms": 679,
+      "max_ms": 688,
+      "throughput_per_s": 8.1,
+      "meets_target": false
+    },
+    {
+      "scenario": "deep page (page 5)",
+      "path": "/requests?page=5",
+      "requests": 40,
+      "failures": 0,
+      "failure_statuses": [],
+      "p50_ms": 699,
+      "p95_ms": 811,
+      "max_ms": 816,
+      "throughput_per_s": 6.9,
+      "meets_target": false
+    }
+  ]
+}
