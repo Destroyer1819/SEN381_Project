@@ -9,6 +9,7 @@ use App\Models\RequestStatusHistory;
 use App\Models\ServiceRequest;
 use App\Services\OfferService;
 use App\Services\RequestStatusService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,9 @@ use Inertia\Response;
 
 class ServiceRequestController extends Controller
 {
+    // The sort fields the list accepts; anything else fails validation, so no user input reaches ORDER BY
+    private const SORTS = ['created_at', 'updated_at', 'reference', 'status', 'category'];
+
     public function create(): Response
     {
 
@@ -72,6 +76,12 @@ class ServiceRequestController extends Controller
             'to' => ['nullable', 'date'],
         ]);
 
+        // Kept out of $filters so the filter bar never sends an old sort back (FR-005, FR-013)
+        $sort = $request->validate([
+            'sort' => ['nullable', Rule::in(self::SORTS)],
+            'direction' => ['nullable', Rule::in(['asc', 'desc'])],
+        ]);
+
         // Only staff and management are offered "Assigned to me"
         $mine = $user->role !== 'requestor' && $request->boolean('mine');
 
@@ -91,7 +101,7 @@ class ServiceRequestController extends Controller
                     $query->orWhere('reference_number', $match[1]);
                 }
             }))
-            ->latest()
+            ->tap(fn (Builder $query) => $this->applySort($query, $sort['sort'] ?? null, $sort['direction'] ?? 'desc'))
             ->paginate(50)
             ->withQueryString()
             ->through(fn (ServiceRequest $r) => $this->summary($r));
@@ -106,6 +116,28 @@ class ServiceRequestController extends Controller
     }
 
     // moved to a method for through to be easily updated for later
+    // Same order as the frontend's sort options: status follows the workflow, ties go to the newest id
+    private function applySort(Builder $query, ?string $field, string $direction): void
+    {
+        $statusOrder = collect(ServiceRequest::STATUSES)
+            ->map(fn (string $status, int $position) => "WHEN '{$status}' THEN {$position}")
+            ->implode(' ');
+
+        match ($field) {
+            'updated_at' => $query->orderBy('updated_at', $direction),
+            'reference' => $query->orderBy('reference_number', $direction),
+            // $direction is validated to asc/desc above, so it is safe in raw SQL
+            'status' => $query->orderByRaw("CASE status {$statusOrder} END {$direction}"),
+            'category' => $query->orderBy(
+                Category::select('name')->whereColumn('categories.id', 'service_requests.category_id'),
+                $direction,
+            ),
+            default => $query->orderBy('created_at', $direction),
+        };
+
+        $query->orderByDesc('id');
+    }
+
     private function summary(ServiceRequest $r): array
     {
 
