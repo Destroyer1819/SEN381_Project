@@ -1,11 +1,11 @@
 import { formatDuration } from '@/lib/duration';
 
 interface Props {
-    /** Mean hours from submission to resolution. Null or missing when nothing was resolved in the period. */
+    /** Mean hours from submission to resolution. Null or missing when none of the period's requests are resolved (the period filters by submission date, like the rest of the dashboard). */
     hours?: number | null;
 }
 
-/** Average resolution time tile for the management dashboard (FR-007). */
+/** Average resolution time tile for the management dashboard (FR-024). */
 export default function AvgResolutionCard({ hours }: Props) {
     const hasValue = typeof hours === 'number' && Number.isFinite(hours) && hours >= 0;
 
@@ -18,7 +18,9 @@ export default function AvgResolutionCard({ hours }: Props) {
                 {hasValue ? formatDuration(hours) : 'No data'}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-                {hasValue ? 'Mean time from submission to resolution, for requests resolved in this period.' : 'No resolved requests in this period.'}
+                {hasValue
+                    ? 'Mean time from submission to resolution, for requests submitted in this period that have been resolved.'
+                    : 'None of the requests submitted in this period have been resolved yet.'}
             </p>
         </section>
     );

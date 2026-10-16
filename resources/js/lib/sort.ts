@@ -1,12 +1,11 @@
-import type { RequestSummary, Status } from '@/types/civic';
-
 export type SortField = 'created_at' | 'updated_at' | 'reference' | 'status' | 'category';
 export type SortDirection = 'asc' | 'desc';
 
 /**
  * Sort choices offered on the request list.
  * Query contract with the server: `?sort=<field>&direction=<asc|desc>`.
- * The default (newest first) is sent as no parameters at all, which matches the server's current `latest()` order.
+ * The server does the sorting across all pages (ServiceRequestController::applySort), with status in workflow order
+ * and ties broken by the newest id. The default (newest first) is sent as no parameters at all.
  */
 export const SORT_OPTIONS = [
     { value: 'created_at:desc', label: 'Newest first' },
@@ -25,9 +24,6 @@ export const DEFAULT_SORT: SortValue = 'created_at:desc';
 
 const VALID_VALUES = new Set<string>(SORT_OPTIONS.map((option) => option.value));
 
-/** Follows the workflow, not the alphabet: open, assigned, in progress, resolved, closed. */
-const STATUS_ORDER: Record<Status, number> = { open: 0, assigned: 1, in_progress: 2, resolved: 3, closed: 4 };
-
 /** Reads `sort` and `direction` from a URL or query string. Anything missing or unknown falls back to the default. */
 export function parseSort(urlOrQuery: string): SortValue {
     const queryStart = urlOrQuery.indexOf('?');
@@ -42,32 +38,4 @@ export function sortParams(value: SortValue): { sort?: SortField; direction?: So
     if (value === DEFAULT_SORT) return {};
     const [sort, direction] = value.split(':') as [SortField, SortDirection];
     return { sort, direction };
-}
-
-const referenceNumber = (r: RequestSummary): number => Number(r.reference.replace(/\D/g, '')) || 0;
-
-const SORT_KEYS: Record<SortField, (r: RequestSummary) => number | string> = {
-    created_at: (r) => Date.parse(r.created_at) || 0,
-    updated_at: (r) => Date.parse(r.updated_at) || 0,
-    reference: referenceNumber,
-    status: (r) => STATUS_ORDER[r.status] ?? Number.MAX_SAFE_INTEGER,
-    category: (r) => (r.category ?? '').toLowerCase(),
-};
-
-/**
- * Orders the rows already on screen. The server is the source of truth across pages;
- * this keeps the visible page in the chosen order. Returns a new array and never mutates the input.
- */
-export function sortRequests(rows: RequestSummary[], value: SortValue): RequestSummary[] {
-    const [field, direction] = value.split(':') as [SortField, SortDirection];
-    const sign = direction === 'asc' ? 1 : -1;
-    const key = SORT_KEYS[field];
-
-    return [...rows].sort((a, b) => {
-        const ka = key(a);
-        const kb = key(b);
-        const compared = typeof ka === 'string' || typeof kb === 'string' ? String(ka).localeCompare(String(kb)) : ka - kb;
-        // Ties keep a stable, predictable order: highest id first.
-        return compared !== 0 ? sign * compared : b.id - a.id;
-    });
 }

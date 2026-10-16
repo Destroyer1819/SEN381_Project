@@ -69,6 +69,10 @@ jobs:
       - name: ESLint
         run: pnpm run lint:check
 
+      # Frontend code-style gate: fails if any file under resources/ is not Prettier-formatted.
+      - name: Prettier format check
+        run: pnpm run format:check
+
       - name: Frontend tests
         run: pnpm test
         env:

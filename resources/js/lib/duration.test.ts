@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formatDuration } from './duration';
 
 describe('formatDuration', () => {
-    // TC-U-15 | FR-007 | boundary values around the minute, hour and day switch-overs
+    // TC-U-15 | FR-024 | boundary values around the minute, hour and day switch-overs
     it.each([
         [0, '0 min'],
         [0.5, '30 min'],

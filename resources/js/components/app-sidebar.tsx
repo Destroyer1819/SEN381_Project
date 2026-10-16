@@ -13,7 +13,7 @@ export function AppSidebar() {
     const mainNavItems: NavItem[] = [
         { title: role === 'requestor' ? 'My requests' : 'Requests', url: '/requests', icon: ClipboardList },
         { title: 'New request', url: '/requests/create', icon: PlusCircle },
-        // FR-008: only management sees the dashboard link (the route is protected on the server as well)
+        // FR-010, FR-022: only management sees the dashboard link (the route is protected on the server as well)
         ...(role === 'management' ? [{ title: 'Dashboard', url: '/dashboard', icon: LayoutGrid }] : []),
     ];
 
