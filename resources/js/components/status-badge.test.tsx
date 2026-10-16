@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import StatusBadge from './status-badge';
 
 describe('StatusBadge', () => {
-    // TC-U-07 | FR-002 | status is shown as readable text (not by colour alone)
+    // TC-U-07 | FR-006 | status is shown as readable text (not by colour alone)
     it.each([
         ['open', 'Open'],
         ['assigned', 'Assigned'],

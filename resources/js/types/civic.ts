@@ -41,6 +41,8 @@ export interface RequestFilters {
     from?: string;
     to?: string;
     mine?: boolean | string | number;
+    active?: boolean | string | number;
+    overdue?: boolean | string | number;
 }
 
 export interface HistoryItem {
@@ -49,6 +51,16 @@ export interface HistoryItem {
     new_status: Status;
     by: string | null;
     at: string;
+}
+
+/** One self-assignment, offer, acceptance or decline (FR-016). Only staff and management receive these. */
+export interface AssignmentItem {
+    id: number;
+    state: 'offered' | 'accepted' | 'declined' | 'self_assigned';
+    to: string | null;
+    by: string | null;
+    at: string;
+    responded_at: string | null;
 }
 
 export interface CommentItem {

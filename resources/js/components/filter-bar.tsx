@@ -23,6 +23,8 @@ export default function FilterBar({ filters = {}, categories, statuses, onApply,
         from: filters.from ?? '',
         to: filters.to ?? '',
         mine: Boolean(filters.mine),
+        active: Boolean(filters.active),
+        overdue: Boolean(filters.overdue),
     });
     const set = (field: keyof typeof values) => (e: { target: { value: string; checked?: boolean; type?: string } }) =>
         setValues((v) => ({ ...v, [field]: e.target.type === 'checkbox' ? Boolean(e.target.checked) : e.target.value }));
@@ -33,7 +35,7 @@ export default function FilterBar({ filters = {}, categories, statuses, onApply,
     }
 
     function reset() {
-        setValues({ q: '', status: '', category_id: '', from: '', to: '', mine: false });
+        setValues({ q: '', status: '', category_id: '', from: '', to: '', mine: false, active: false, overdue: false });
         onApply({});
     }
 
@@ -79,6 +81,15 @@ export default function FilterBar({ filters = {}, categories, statuses, onApply,
                     Assigned to me
                 </label>
             )}
+            {/* FR-021: hide finished work. FR-023: list only overdue requests. */}
+            <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={values.active} onChange={set('active')} className="size-4" />
+                Active only
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={values.overdue} onChange={set('overdue')} className="size-4" />
+                Overdue only
+            </label>
             <div className="flex items-end gap-2 lg:col-span-2">
                 <Button type="submit">Apply</Button>
                 <Button type="button" variant="outline" onClick={reset}>

@@ -21,13 +21,19 @@ use Illuminate\Support\Facades\Hash;
 class VolumeSeeder extends Seeder
 {
     private const FIRST_USER_ID = 9;      // users 1 to 8 come from ScenarioSeeder
+
     private const FIRST_REQUEST_ID = 11;  // requests 1 to 10 come from ScenarioSeeder
+
     private const REQUESTORS = 40;
+
     private const STAFF = 5;
+
     private const MANAGERS = 1;
+
     private const CHUNK = 200;            // rows per INSERT statement
 
     private int $now;
+
     private array $buffer = [];
 
     private const FIRST_NAMES = ['Thabo', 'Naledi', 'Ruan', 'Zanele', 'Kagiso', 'Annelie', 'Mandla', 'Priya', 'Bongani', 'Chantel',
@@ -51,19 +57,19 @@ class VolumeSeeder extends Seeder
     /** Description templates per category id (see CategorySeeder). */
     private const DESCRIPTIONS = [
         1 => ['The lights are not working.', 'The door lock is broken.', 'Water is leaking from the ceiling.',
-              'The toilets are blocked.', 'The air conditioner is not cooling.', 'A window is cracked.'],
+            'The toilets are blocked.', 'The air conditioner is not cooling.', 'A window is cracked.'],
         2 => ['The public Wi-Fi is not working.', 'A computer will not start up.', 'The printer is offline.',
-              'The projector shows no picture.', 'The booking kiosk screen is frozen.'],
+            'The projector shows no picture.', 'The booking kiosk screen is frozen.'],
         3 => ['A section of the fence has fallen over.', 'The grass has not been cut in weeks.', 'There is a large pothole.',
-              'The paint is peeling badly.', 'A tree branch is hanging over the path.', 'The gutter has come loose.'],
+            'The paint is peeling badly.', 'A tree branch is hanging over the path.', 'The gutter has come loose.'],
         4 => ['Found a set of keys.', 'Found a wallet with cards inside.', 'Lost a child\'s school bag.',
-              'Found a mobile phone.', 'Lost a blue umbrella.'],
+            'Found a mobile phone.', 'Lost a blue umbrella.'],
         5 => ['The security light is off at night.', 'The gate is left open after hours.', 'There is broken glass on the walkway.',
-              'Someone has been sleeping in the storeroom.', 'The alarm goes off for no reason.'],
+            'Someone has been sleeping in the storeroom.', 'The alarm goes off for no reason.'],
         6 => ['A bench is broken and unsafe.', 'The playground swing chain has snapped.', 'A table leg is broken.',
-              'The water fountain is damaged.', 'The ramp railing is loose.'],
+            'The water fountain is damaged.', 'The ramp railing is loose.'],
         7 => ['Loud music late at night.', 'Illegal dumping next to the road.', 'Stray dogs in the area.',
-              'A suggestion for more rubbish bins.', 'Strong smell coming from a drain.'],
+            'A suggestion for more rubbish bins.', 'Strong smell coming from a drain.'],
     ];
 
     private const FOLLOW_UPS = ['Is there any update on this?', 'This is still a problem.', 'It is getting worse, please help.',

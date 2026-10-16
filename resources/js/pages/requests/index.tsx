@@ -1,9 +1,11 @@
 import FilterBar from '@/components/filter-bar';
 import Pagination from '@/components/pagination';
+import SortControl from '@/components/sort-control';
 import StatusBadge from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { formatDateTime } from '@/lib/workflow';
+import { parseSort, sortParams, type SortValue } from '@/lib/sort';
+import { cleanFilters, formatDateTime } from '@/lib/workflow';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import type { Category, Paginator, RequestFilters, RequestSummary } from '@/types/civic';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -18,11 +20,17 @@ interface Props {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Requests', href: '/requests' }];
 
 export default function Index({ requests, filters, categories, statuses }: Props) {
-    const { auth } = usePage<SharedData>().props;
+    const page = usePage<SharedData>();
+    const { auth } = page.props;
     const isRequestor = auth.user.role === 'requestor';
 
-    const apply = (cleaned: Record<string, unknown>) =>
-        router.get('/requests', cleaned as Record<string, string>, { preserveState: true, replace: true });
+    // The chosen sort lives in the URL (?sort=&direction=) so it survives paging and filtering; the server orders the rows.
+    const sort = parseSort(page.url);
+
+    const visit = (query: Record<string, unknown>) =>
+        router.get('/requests', query as Record<string, string>, { preserveState: true, replace: true });
+    const apply = (cleaned: Record<string, unknown>) => visit({ ...cleaned, ...sortParams(sort) });
+    const changeSort = (next: SortValue) => visit({ ...cleanFilters({ ...filters }), ...sortParams(next) });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -37,9 +45,12 @@ export default function Index({ requests, filters, categories, statuses }: Props
 
                 <FilterBar filters={filters} categories={categories} statuses={statuses} onApply={apply} showMine={!isRequestor} />
 
-                <p className="text-muted-foreground text-sm" aria-live="polite">
-                    {requests.total} request{requests.total === 1 ? '' : 's'}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-muted-foreground text-sm" aria-live="polite">
+                        {requests.total} request{requests.total === 1 ? '' : 's'}
+                    </p>
+                    <SortControl value={sort} onChange={changeSort} />
+                </div>
 
                 {requests.data.length === 0 ? (
                     <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center">
