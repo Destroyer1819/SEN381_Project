@@ -1,0 +1,79 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, Development]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the run that is still in progress.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP and frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          coverage: none
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install PHP packages
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Install frontend packages
+        run: pnpm install --frozen-lockfile
+
+      # Security gate: fails on any published advisory for an installed PHP package.
+      - name: Composer security audit
+        run: composer audit --no-interaction
+
+      # Security gate: fails on high or critical advisories; lower ones are reported in the log but do not block.
+      - name: pnpm security audit
+        run: pnpm audit --audit-level high
+
+      # Static code-quality gate: fails if any PHP file does not match the Laravel Pint style.
+      - name: PHP code style (Pint)
+        run: vendor/bin/pint --test
+
+      # Runs on .env.testing and in-memory SQLite, so no .env or database server is needed.
+      - name: PHP tests
+        run: php artisan test
+
+      # The type-check reads Ziggy's types from vendor/, so it must come after composer install.
+      - name: TypeScript type-check
+        run: pnpm run types
+
+      - name: ESLint
+        run: pnpm run lint:check
+
+      # Frontend code-style gate: fails if any file under resources/ is not Prettier-formatted.
+      - name: Prettier format check
+        run: pnpm run format:check
+
+      - name: Frontend tests
+        run: pnpm test
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1

@@ -1,0 +1,84 @@
+import { expect, test } from '@playwright/test';
+import { USERS, login, logout } from './helpers.js';
+
+// FR numbers follow PED v3.0 section 4.1.
+// TC-E2E-01 | FR-001, FR-004, FR-006, FR-013, FR-014, FR-015, FR-017, FR-019, FR-020, FR-021 | Critical journey across three screens and two roles:
+// requestor submits -> staff finds, takes, works and resolves -> requestor sees the outcome and audit trail.
+test('request is submitted, handled by staff and the requestor sees the result', async ({ page }) => {
+    const marker = `E2E-${Date.now()}`;
+    const description = `Projector in room 204 does not turn on (${marker})`;
+
+    // --- requestor submits
+    await login(page, USERS.requestor);
+    await page.getByRole('link', { name: 'New request' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Submit a request' })).toBeVisible();
+    await page.getByLabel('Category').selectOption({ label: 'IT support' });
+    await page.getByLabel('Location').fill('Room 204');
+    await page.getByLabel('Area').fill('Admin block');
+    await page.getByLabel('Description').fill(description);
+    await page.getByRole('button', { name: 'Submit request' }).click();
+
+    await expect(page.getByRole('status')).toContainText('Request submitted');
+    const reference = (await page.getByRole('heading', { level: 1 }).innerText()).trim();
+    expect(reference).toMatch(/^CC-\d+$/);
+    await expect(page.locator('[data-status="open"]')).toBeVisible();
+    await logout(page);
+
+    // --- staff finds it by searching, takes it, starts work, resolves it
+    await login(page, USERS.staff);
+    await page.getByLabel('Search').fill(marker);
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await page.getByRole('link', { name: reference }).click();
+
+    await page.getByRole('button', { name: 'Take this request' }).click();
+    await expect(page.locator('[data-status="assigned"]')).toBeVisible();
+
+    await page.getByLabel('Next step').selectOption({ label: 'Start work' });
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await expect(page.locator('[data-status="in_progress"]')).toBeVisible();
+
+    await page.getByLabel('Next step').selectOption({ label: 'Mark as resolved' });
+    await page.getByLabel('Resolution note').fill('Replaced the power cable.');
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await expect(page.locator('[data-status="resolved"]')).toBeVisible();
+    await logout(page);
+
+    // --- requestor sees the final state, the resolution note and the history
+    await login(page, USERS.requestor);
+    await page.getByRole('link', { name: reference }).click();
+    // Wait for the detail page: the list can hold other resolved requests from earlier runs
+    await expect(page.getByRole('heading', { level: 1, name: reference })).toBeVisible();
+    await expect(page.locator('[data-status="resolved"]')).toBeVisible();
+    await expect(page.getByText('Replaced the power cable.')).toBeVisible();
+    await expect(page.getByText('In progress → Resolved')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Take this request' })).toHaveCount(0);
+});
+
+// TC-E2E-02 | FR-010, FR-011, NFR-002 | Negative / unauthorised behaviour seen through the UI
+test('a requestor is kept out of staff and management areas', async ({ page }) => {
+    // not signed in
+    await page.goto('/requests');
+    await expect(page).toHaveURL(/\/login/);
+
+    // signed in as requestor
+    await login(page, USERS.requestor);
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
+    const response = await page.goto('/dashboard');
+    expect(response?.status()).toBe(403);
+});
+
+// TC-E2E-03 | FR-023, FR-024 | Management sees dashboard totals that respond to a category filter
+test('management dashboard shows counts and can be filtered by category', async ({ page }) => {
+    await login(page, USERS.management);
+    await page.getByRole('link', { name: 'Dashboard' }).click();
+    await expect(page.getByRole('heading', { name: 'Management dashboard' })).toBeVisible();
+
+    const total = Number(await page.getByTestId('total').innerText());
+    expect(total).toBeGreaterThan(0);
+
+    await page.getByLabel('Category').selectOption({ label: 'Lost property' });
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await expect(page).toHaveURL(/category_id=4/);
+    const filtered = Number(await page.getByTestId('total').innerText());
+    expect(filtered).toBeLessThanOrEqual(total);
+});
