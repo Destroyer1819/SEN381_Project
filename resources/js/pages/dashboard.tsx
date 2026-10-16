@@ -1,3 +1,4 @@
+import AvgResolutionCard from '@/components/avg-resolution-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,8 @@ interface Stats {
     by_status: Record<string, number>;
     overdue: number;
     overdue_days: number;
+    /** Mean hours from submission to resolution (service_request.created_at to resolved_at). Null when nothing was resolved. */
+    avg_resolution_hours?: number | null;
     by_category: { name: string; total: number }[];
 }
 
@@ -79,6 +82,8 @@ export default function Dashboard({ filters, categories, stats }: { filters: Req
                     ))}
                     <Tile label={`Overdue (> ${stats.overdue_days} days)`} value={stats.overdue} testId="overdue" alert />
                 </div>
+
+                <AvgResolutionCard hours={stats.avg_resolution_hours} />
 
                 <div className="bg-card space-y-3 rounded-xl border p-5">
                     <h2 className="font-semibold">Requests by category</h2>

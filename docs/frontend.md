@@ -9,11 +9,17 @@ The frontend is React 19 with TypeScript, rendered through Inertia 3. Laravel de
 | `app.tsx` | Entry point. Loads the page component Laravel names. |
 | `pages/` | One file per screen. `Inertia::render('requests/index')` loads `pages/requests/index.tsx`. |
 | `layouts/` | `app-layout` (sidebar shell), `auth-layout` (login and register), `settings/layout`. |
-| `components/` | App components: `request-form`, `filter-bar`, `status-badge`, `pagination`, sidebar and navigation. |
+| `pages/errors/` | `403.tsx` and `404.tsx`, for `Inertia::render('errors/403')` and `errors/404`. |
+| `components/` | App components: `request-form`, `filter-bar`, `sort-control`, `status-badge`, `pagination`, `avg-resolution-card`, `error-state`, `http-error-overlay`, sidebar and navigation. |
 | `components/ui/` | Generic shadcn/ui building blocks. |
 | `lib/validation.ts` | Client-side rules for the request form. |
 | `lib/workflow.ts` | Status labels, action labels, date formatting. |
+| `lib/sort.ts` | Sort choices for the request list, reading and writing the `sort` and `direction` query parameters. |
+| `lib/duration.ts` | Turns hours into text such as `2 d 4 h` for the dashboard. |
+| `lib/errors.ts` | Wording for the 403 and 404 screens. |
 | `types/` | `index.ts` (shared props, `User`) and `civic.ts` (request data shapes). |
+
+`resources/views/errors/` holds plain Blade pages for 403 and 404. Laravel uses them automatically when `APP_DEBUG=false`. They need no build files, so they still work if the Vite build is missing.
 
 Component and unit tests sit next to the code as `*.test.ts(x)`. End-to-end journeys are in `e2e/`.
 
@@ -74,8 +80,12 @@ Query parameters the filter form sends (all optional; empty ones are omitted):
 | `category_id` | A category id |
 | `from`, `to` | Dates as `YYYY-MM-DD` |
 | `mine` | Present when "Assigned to me" is ticked. Only offered to staff and management. |
+| `sort` | `created_at`, `updated_at`, `reference`, `status` or `category`. Left out for the default order. |
+| `direction` | `asc` or `desc`. Always sent together with `sort`. |
 
-The page title and columns change for requestors. The server decides which requests are listed: requestors get only their own, staff get unassigned requests and those assigned to them, and management gets all of them. The list is newest first, 50 per page; there is no sort parameter yet. An invalid `status` or date comes back as a validation error.
+The sort control sends `sort` and `direction` only when the choice is not the default. Newest first is the default and sends nothing. The server must apply the sort to the whole result before paging, ignore unknown values, and fall back to newest first. `status` should follow the workflow order (open, assigned, in progress, resolved, closed), not the alphabet. The page also puts the rows it received into the chosen order, so the visible page is always consistent. Until the server applies the sort, that only reorders the current page of 50.
+
+The page title and columns change for requestors. The server decides which requests are listed: requestors get only their own, staff get unassigned requests and those assigned to them, and management gets all of them. The list is newest first unless `sort` and `direction` say otherwise, 50 per page. An invalid `status` or date comes back as a validation error.
 
 ### `GET /requests/create` renders `requests/create`
 
@@ -138,11 +148,22 @@ Management only. Other roles get a 403, which the end-to-end test checks.
 |---|---|
 | `filters` | `{ category_id?, from?, to? }` echoed back; only the filters that were sent |
 | `categories` | `[{ id, name }]`, the active categories, for the filter dropdown |
-| `stats` | `{ total, by_status, overdue, overdue_days, by_category }` |
+| `stats` | `{ total, by_status, overdue, overdue_days, by_category, avg_resolution_hours }` |
 
 `stats.by_status` is an object of status to count. It always has all five statuses, in workflow order, with 0 for any that have no requests. `stats.by_category` is `[{ name, total }]`, highest first, listing only categories that have requests in the filtered period, so it can be an empty list. `stats.overdue_days` is the threshold shown in the "Overdue (> N days)" label, currently 7.
 
 The filter form sends `category_id`, `from` and `to` as query parameters, and every figure respects all three. An invalid date comes back as a validation error.
+
+`stats.avg_resolution_hours` is the mean number of hours from `created_at` to `resolved_at` for requests resolved in the filtered period, or `null` when none were resolved. The dashboard shows it as "Average resolution time" (for example `2 d 4 h`), and shows "No data" for `null` or when the key is missing, which is what it shows until the server sends it.
+
+### 403 and 404 screens
+
+Two ways the frontend shows them, so the backend does not need to change anything:
+
+- **Full page load** (typing a URL, refreshing): Laravel renders `resources/views/errors/403.blade.php` or `404.blade.php`. This only happens with `APP_DEBUG=false`; with debug on, Laravel shows its own debug page.
+- **Inside the app** (clicking a link that the server answers with a plain 403 or 404): `components/http-error-overlay.tsx` catches the response and shows the same screen over the current page, with a Close button.
+
+If the backend later renders `Inertia::render('errors/403')` or `errors/404` from the exception handler, those pages exist and show the same wording inside the normal layout.
 
 ### Navigation the frontend assumes
 
