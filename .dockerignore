@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.git
+node_modules
+vendor
+public/build
+public/hot
+storage/logs/*
+test-results
+playwright-report
+coverage
+Database files
+docs
