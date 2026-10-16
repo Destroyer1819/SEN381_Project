@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { formatDateTime, statusLabel, transitionLabel, transitionNeedsNote } from '@/lib/workflow';
 import { type BreadcrumbItem } from '@/types';
-import type { CommentItem, HistoryItem, RequestDetail } from '@/types/civic';
+import type { AssignmentItem, CommentItem, HistoryItem, RequestDetail } from '@/types/civic';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent } from 'react';
 
@@ -97,15 +97,23 @@ function OfferForm({ request, staff }: { request: RequestDetail; staff: Actions[
     );
 }
 
+// FR-016: who took or was offered the request, and who made the offer
+function assignmentLabel(a: AssignmentItem): string {
+    if (a.state === 'self_assigned') return `${a.to} took the request`;
+    return `${a.by} offered it to ${a.to}`;
+}
+
 export default function Show({
     request,
     history,
     comments,
+    assignments = [],
     actions,
 }: {
     request: RequestDetail;
     history: HistoryItem[];
     comments: CommentItem[];
+    assignments?: AssignmentItem[];
     actions: Actions;
 }) {
     const commentForm = useForm({ body: '' });
@@ -233,6 +241,23 @@ export default function Show({
                         )}
 
                         {actions.transitions.length > 0 && <StatusForm key={request.version} request={request} transitions={actions.transitions} />}
+
+                        {assignments.length > 0 && (
+                            <Panel title="Assignments">
+                                <ol className="border-border space-y-3 border-l-2 pl-4 text-sm">
+                                    {assignments.map((a) => (
+                                        <li key={a.id} className="flex flex-col">
+                                            <strong>{assignmentLabel(a)}</strong>
+                                            <span className="text-muted-foreground text-xs">
+                                                {formatDateTime(a.at)}
+                                                {a.responded_at && a.state !== 'self_assigned' && ` · ${a.state} ${formatDateTime(a.responded_at)}`}
+                                                {a.state === 'offered' && ' · waiting for a reply'}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </Panel>
+                        )}
 
                         <Panel title="History">
                             <ol className="border-border space-y-3 border-l-2 pl-4 text-sm">

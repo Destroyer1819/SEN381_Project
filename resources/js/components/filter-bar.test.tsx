@@ -41,4 +41,19 @@ describe('FilterBar', () => {
         render(<FilterBar categories={categories} statuses={statuses} onApply={() => {}} />);
         expect(screen.queryByLabelText('Assigned to me')).not.toBeInTheDocument();
     });
+
+    // TC-U-21 | FR-021, FR-023 | the active and overdue views are sent only when ticked, and keep their state
+    it('sends "Active only" and "Overdue only" when ticked', async () => {
+        const onApply = vi.fn();
+        const user = userEvent.setup();
+        render(<FilterBar filters={{ overdue: true }} categories={categories} statuses={statuses} onApply={onApply} />);
+
+        expect(screen.getByLabelText('Overdue only')).toBeChecked();
+        expect(screen.getByLabelText('Active only')).not.toBeChecked();
+
+        await user.click(screen.getByLabelText('Active only'));
+        await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+        expect(onApply).toHaveBeenCalledWith({ active: true, overdue: true });
+    });
 });

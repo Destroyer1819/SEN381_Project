@@ -37,17 +37,7 @@ Validation errors arrive through Inertia's standard `errors` prop, keyed by fiel
 
 ## What each page expects from the backend
 
-All of these require a signed-in user. Every page exists; the backend routes are at different stages:
-
-| Route | Backend |
-|---|---|
-| `GET /requests` | Built |
-| `GET /requests/create`, `POST /requests` | Built |
-| `GET /requests/{id}` | Built; in `actions`, only `canTake` is live so far |
-| `POST /requests/{id}/comments` | Built |
-| `POST /requests/{id}/take` | Built |
-| `POST /requests/{id}/offer`, `/status` and `POST /assignments/{id}/respond` | Not built |
-| `GET /dashboard` | Built |
+All of these require a signed-in user, and every route below is built on the backend (see [backend.md](backend.md) for the rules behind them).
 
 ### `GET /requests` renders `requests/index`
 
@@ -80,10 +70,12 @@ Query parameters the filter form sends (all optional; empty ones are omitted):
 | `category_id` | A category id |
 | `from`, `to` | Dates as `YYYY-MM-DD` |
 | `mine` | Present when "Assigned to me" is ticked. Only offered to staff and management. |
+| `active` | Present when "Active only" is ticked: hides resolved and closed requests (FR-021) |
+| `overdue` | Present when "Overdue only" is ticked: only overdue requests (FR-023). The dashboard's Overdue tile links here with its own filters. |
 | `sort` | `created_at`, `updated_at`, `reference`, `status` or `category`. Left out for the default order. |
 | `direction` | `asc` or `desc`. Always sent together with `sort`. |
 
-The sort control sends `sort` and `direction` only when the choice is not the default. Newest first is the default and sends nothing. The server must apply the sort to the whole result before paging, ignore unknown values, and fall back to newest first. `status` should follow the workflow order (open, assigned, in progress, resolved, closed), not the alphabet. The page also puts the rows it received into the chosen order, so the visible page is always consistent. Until the server applies the sort, that only reorders the current page of 50.
+The sort control sends `sort` and `direction` only when the choice is not the default. Newest first is the default and sends nothing. The server sorts the whole result before paging, with `status` in workflow order (open, assigned, in progress, resolved, closed) and ties going to the newest id, so the page shows the rows in the order they arrive. An unknown `sort` or `direction` comes back as a validation error.
 
 The page title and columns change for requestors. The server decides which requests are listed: requestors get only their own, staff get unassigned requests and those assigned to them, and management gets all of them. The list is newest first unless `sort` and `direction` say otherwise, 50 per page. An invalid `status` or date comes back as a validation error.
 
@@ -105,6 +97,8 @@ The client applies these rules first, and the server enforces the same ones:
 | `location`, `area` | Required, at most 255 characters |
 | `description` | Required, 10 to 2000 characters |
 
+Some categories need more on the server only: a Security concern needs a description of at least 30 characters and Lost property at least 20. The form's counter only knows the general minimum of 10, so a shorter description in those categories passes the browser check and comes back as a server error under `description`, with a message that says what the category needs.
+
 On failure the server returns validation errors keyed `category_id`, `location`, `area`, `description`. On success it redirects to the new request's page with the flash message "Request submitted. Your reference is CC-…", which the end-to-end test looks for.
 
 ### `GET /requests/{id}` renders `requests/show`
@@ -114,31 +108,35 @@ On failure the server returns validation errors keyed `category_id`, `location`,
 | `request` | A request summary plus `version` (number) and `resolved_at` (ISO string or null) |
 | `history` | `[{ id, old_status, new_status, by, at }]`. `old_status` is null for the first entry; `by` is a name; `at` is an ISO string. |
 | `comments` | `[{ id, text, is_resolution, by, role, at }]` |
+| `assignments` | `[{ id, state, to, by, at, responded_at }]`, oldest first. `state` is `self_assigned`, `offered`, `accepted` or `declined`; `to` and `by` are names. Shown in the Assignments panel. Always empty for requestors. |
 | `actions` | What the current user may do; see below |
 
 The server returns 403 for a request the user may not see and 404 for one that does not exist. `history` and `comments` are oldest first.
 
-`actions` (`canTake` is calculated; until the other routes are built, the server sends empty `transitions` and `staff`, `false` for `canOffer` and `null` for `pendingOfferId`):
+`actions`, all calculated by the server for the current user:
 
 | Field | Type | Effect on the page |
 |---|---|---|
-| `transitions` | string[] | Statuses the user may move this request to. Empty hides the status form. |
-| `canTake` | boolean | Shows "Take this request". True only for staff, on an open request with nobody assigned. |
-| `canOffer` | boolean | Shows the "Offer to" form |
-| `staff` | `[{ id, name }]` | Options for the offer form. Empty hides it. |
-| `pendingOfferId` | number or null | When set, shows Accept and Decline for that assignment |
+| `transitions` | string[] | Statuses the user may move this request to. Only the assigned staff member gets any. Empty hides the status form. |
+| `canTake` | boolean | Shows "Take this request". True only for staff, on an open request with nobody assigned and no offer waiting. |
+| `canOffer` | boolean | Shows the "Offer to" form. True for staff and management on an open request with nobody assigned and no offer waiting. |
+| `staff` | `[{ id, name }]` | Options for the offer form, least busy first. Leaves out the current user and anyone who already declined this request. Empty hides the form. |
+| `pendingOfferId` | number or null | Set only for the person an offer is waiting on; shows Accept and Decline for that assignment |
+| `pendingOfferTo` | string or null | For other staff and management while an offer is waiting: the name it is waiting on, shown as "Offered to …, waiting for a reply". Null for the offeree and for requestors. |
+
+Refusals from Take, Offer, Accept or Decline and stale status changes come back under the `request` error key. The page shows that error once, at the top of the side panel.
 
 ### Actions on a request
 
 | Request | Body | Notes |
 |---|---|---|
-| `POST /requests/{id}/status` | `{ status, version, note }` | `version` is the value the page loaded, for the stale-write check. `note` is filled in only when moving to `resolved`. Errors are shown for the keys `status`, `note` and `request` (use `request` for conflicts such as a stale version). |
-| `POST /requests/{id}/take` | none | Built. Staff self-assign; the request becomes `assigned`. Sets the flash message "You have taken this request." If someone else took it first, redirects back with an error under the `request` key. The page currently shows that key only inside the status form, which is hidden here, so the message is not displayed yet. |
-| `POST /requests/{id}/offer` | `{ assigned_to }` | A staff user id. Errors keyed `assigned_to`. |
-| `POST /requests/{id}/comments` | `{ body }` | Built. Required, at most 2000 characters. Errors keyed `body`. Anyone who may view the request may comment. Sets the flash message "Comment added." |
-| `POST /assignments/{id}/respond` | `{ decision }` | `accept` or `decline` |
+| `POST /requests/{id}/status` | `{ status, version, note }` | `version` is the value the page loaded, for the stale-write check. `note` is required when moving to `resolved` and is saved as a resolution comment. Errors are keyed `status` (a move that is not allowed, naming the allowed ones), `note`, and `request` ("This request changed since you opened it."). Sets the flash message "Status updated." |
+| `POST /requests/{id}/take` | none | Staff self-assign; the request becomes `assigned`. Sets the flash message "You have taken this request." If someone else took it first, or an offer is waiting, redirects back with an error under `request`. |
+| `POST /requests/{id}/offer` | `{ assigned_to }` | A staff user id from `actions.staff`. Errors keyed `assigned_to`, or `request` if the request was taken or offered first. Sets "Offered to …", or says the offer was accepted automatically when that person has used their 3 declines this month. |
+| `POST /requests/{id}/comments` | `{ body }` | Required, at most 2000 characters. Errors keyed `body`. Anyone who may view the request may comment. Sets the flash message "Comment added." |
+| `POST /assignments/{id}/respond` | `{ decision }` | `accept` or `decline`. A decline passes the offer to the next staff member, or back to the open pool. A 4th decline in a month is refused with an error under `request`. |
 
-Each redirects back to the request page so it reloads with fresh data. The comments and take routes exist so far.
+Each redirects back to the request page so it reloads with fresh data.
 
 ### `GET /dashboard` renders `dashboard`
 
@@ -154,7 +152,7 @@ Management only. Other roles get a 403, which the end-to-end test checks.
 
 The filter form sends `category_id`, `from` and `to` as query parameters, and every figure respects all three. An invalid date comes back as a validation error.
 
-`stats.avg_resolution_hours` is the mean number of hours from `created_at` to `resolved_at` for requests resolved in the filtered period, or `null` when none were resolved. The dashboard shows it as "Average resolution time" (for example `2 d 4 h`), and shows "No data" for `null` or when the key is missing, which is what it shows until the server sends it.
+`stats.avg_resolution_hours` is the mean number of hours from `created_at` to `resolved_at` for the requests submitted in the filtered period that have been resolved, or `null` when none of them have. The dashboard shows it as "Average resolution time" (for example `2 d 4 h`), and shows "No data" for `null`.
 
 ### 403 and 404 screens
 
@@ -182,6 +180,6 @@ The backend converts between the two, so pages can rely on the left-hand column.
 
 ## What the end-to-end tests need
 
-`e2e/` signs in as three users, one per role, with the addresses listed in `e2e/helpers.js`. The seeders do not create those addresses (they create `@example.com` users), so the journeys cannot log in until one side is changed to match the other. The first journey also needs the status route, which is not built; the take step it uses now exists.
+`e2e/` signs in as the seeded requestor, staff member and manager listed in `e2e/helpers.js`, all with the seeded test password. The journeys need a running site (`php artisan serve` and `pnpm run dev`) and a seeded database. They also expect categories named "IT support" and "Lost property", with "Lost property" having id 4, and existing requests for the dashboard totals.
 
-The other expectations are met by the seeders: categories named "IT support" and "Lost property", with "Lost property" having id 4, and existing requests for the dashboard totals.
+Fortify allows 5 logins per minute for each address, so wait a minute between two full runs. Running `pnpm test` while `pnpm run dev` is running deletes `public/hot`, and the site then shows "Vite manifest not found" until `pnpm run dev` is restarted.

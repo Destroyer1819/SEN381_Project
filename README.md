@@ -38,6 +38,8 @@ php artisan migrate:fresh --seed
 
 ---
 
+> **Historical draft.** The plan below was the team's starting point for Milestone 1 and is kept for the record. The Project Engineering Document on the `PED` branch replaced it. Its requirement numbers (FR-001 to FR-008) are the old draft numbering and do not match the PED. Code, tests and the RTM use the PED numbering.
+
 # CivicConnect — Milestone 1 Working Plan
 *Engineering Foundation & Requirements Baseline (PED v1.0)*
 

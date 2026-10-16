@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreServiceRequest;
 use App\Models\Category;
+use App\Models\RequestAssignment;
 use App\Models\RequestComment;
 use App\Models\RequestStatusHistory;
 use App\Models\ServiceRequest;
@@ -84,6 +85,9 @@ class ServiceRequestController extends Controller
 
         // Only staff and management are offered "Assigned to me"
         $mine = $user->role !== 'requestor' && $request->boolean('mine');
+        // FR-021: "Active only" hides resolved and closed requests. FR-023: "Overdue only" lists the overdue ones.
+        $active = $request->boolean('active');
+        $overdue = $request->boolean('overdue');
 
         $requests = ServiceRequest::query()
             ->with(['category:id,name', 'requestor:id,name', 'assignee:id,name'])
@@ -93,6 +97,8 @@ class ServiceRequestController extends Controller
             ->when($filters['from'] ?? null, fn ($query, $from) => $query->whereDate('created_at', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, $to) => $query->whereDate('created_at', '<=', $to))
             ->when($mine, fn ($query) => $query->where('assigned_to', $user->id))
+            ->when($active, fn ($query) => $query->whereNotIn('status', ['resolved', 'closed']))
+            ->when($overdue, fn ($query) => $query->overdue())
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(function ($query) use ($q) {
                 $query->whereLike('location', "%{$q}%")
                     ->orWhereLike('description', "%{$q}%");
@@ -109,7 +115,7 @@ class ServiceRequestController extends Controller
         return Inertia::render('requests/index',
             [
                 'requests' => $requests,
-                'filters' => [...$filters, 'mine' => $mine],
+                'filters' => [...$filters, 'mine' => $mine, 'active' => $active, 'overdue' => $overdue],
                 'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'statuses' => ServiceRequest::STATUSES,
             ]);
@@ -198,6 +204,21 @@ class ServiceRequestController extends Controller
                     'role' => $c->author?->role,
                     'at' => $c->created_at->toIso8601String(),
                 ]),
+                // FR-016, FR-022: every self-assignment, offer, acceptance and decline, oldest first.
+                // Internal to staff and management, so requestors get an empty list.
+                'assignments' => $request->user()->role === 'requestor' ? [] : $serviceRequest->assignments()
+                    ->with(['assignee:id,name', 'offeredBy:id,name'])
+                    ->orderBy('created_at')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(fn (RequestAssignment $a) => [
+                        'id' => $a->id,
+                        'state' => $a->state,
+                        'to' => $a->assignee?->name,
+                        'by' => $a->offeredBy?->name,
+                        'at' => $a->created_at->toIso8601String(),
+                        'responded_at' => $a->responded_at?->toIso8601String(),
+                    ]),
                 'actions' => [
                     'transitions' => Gate::allows('changeStatus', $serviceRequest) ? $statuses->allowedNext($serviceRequest->status) : [],
                     'canTake' => Gate::allows('take', $serviceRequest),

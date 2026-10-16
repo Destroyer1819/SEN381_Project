@@ -215,3 +215,22 @@ test('the detail page says who a pending offer is waiting on', function () {
             ->assertInertia(fn (Assert $page) => $page->where('actions.pendingOfferTo', $expected));
     }
 });
+
+// FR-016, FR-022: staff and management can see every offer, acceptance and decline; requestors cannot
+test('the request page lists the assignment records for staff and management only', function () {
+    offerTo($this->request, $this->manager, $this->alice);
+    answer($this->request, $this->alice, 'decline'); // passes the offer on to bob
+
+    $expected = [
+        ['state' => 'declined', 'to' => $this->alice->name, 'by' => $this->manager->name],
+        ['state' => 'offered', 'to' => $this->bob->name, 'by' => $this->manager->name],
+    ];
+    $records = fn ($viewer) => collect($this->actingAs($viewer)->get("/requests/{$this->request->id}")
+        ->viewData('page')['props']['assignments'])
+        ->map(fn ($a) => ['state' => $a['state'], 'to' => $a['to'], 'by' => $a['by']])
+        ->all();
+
+    expect($records($this->manager))->toBe($expected);
+    expect($records($this->bob))->toBe($expected);
+    expect($records($this->request->requestor))->toBe([]);
+});

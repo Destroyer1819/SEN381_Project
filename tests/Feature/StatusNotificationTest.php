@@ -5,9 +5,14 @@ use App\Listeners\NotifyRequesterOfStatusChange;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use App\Notifications\RequestStatusChangedMail;
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 
 beforeEach(function () {
     $this->staff = User::factory()->create(['role' => 'staff']);
@@ -78,4 +83,45 @@ test('the listener emails the requester', function () {
 
     Notification::assertSentOnDemand(RequestStatusChangedMail::class,
         fn ($notification, $channels, $notifiable) => $notifiable->routes['mail'] === 'requester@example.com');
+});
+
+// PED 13.7.2: on the sync queue (staging) a mail failure is logged, the status change stays saved,
+// and the user is not shown an error
+test('a mail failure on the sync queue is logged and the status change still succeeds', function () {
+    config(['queue.default' => 'sync', 'mail.default' => 'broken', 'mail.mailers.broken' => ['transport' => 'broken']]);
+    Mail::extend('broken', fn () => new class extends AbstractTransport
+    {
+        protected function doSend(SentMessage $message): void
+        {
+            throw new RuntimeException('Mail provider unavailable');
+        }
+
+        public function __toString(): string
+        {
+            return 'broken://';
+        }
+    });
+    Log::spy();
+
+    $this->actingAs($this->staff)
+        ->post("/requests/{$this->request->id}/status", ['status' => 'in_progress', 'version' => 0])
+        ->assertRedirect("/requests/{$this->request->id}")
+        ->assertSessionHas('success');
+
+    expect($this->request->fresh()->status)->toBe('in_progress');
+    Log::shouldHaveReceived('error')->once()->withArgs(fn (string $message, array $context) => $message === 'Status email could not be sent'
+        && $context['request_id'] === $this->request->id);
+});
+
+// D-011: on a real queue the failure is rethrown, so the worker retries the job
+test('a mail failure on a real queue is rethrown for a retry', function () {
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('Mail provider unavailable'));
+    $listener = new NotifyRequesterOfStatusChange;
+    $job = Mockery::mock(Job::class);
+    $job->shouldReceive('getConnectionName')->andReturn('database');
+    $listener->setJob($job);
+
+    $event = new RequestStatusChanged(1, 'CC-2026000001', 'assigned', 'in_progress', $this->staff->id, now()->toIso8601String(), 'requester@example.com');
+
+    expect(fn () => $listener->handle($event))->toThrow(RuntimeException::class, 'Mail provider unavailable');
 });
