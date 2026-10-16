@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import ErrorState from './error-state';
 
 describe('ErrorState', () => {
-    // TC-U-19 | FR-008 | negative: a forbidden page explains the problem and offers a way out
+    // TC-U-19 | FR-010, FR-011 | negative: a forbidden page explains the problem and offers a way out
     it('shows the 403 wording with a link back to the requests', () => {
         render(<ErrorState status={403} />);
         expect(screen.getByRole('heading', { name: 'You do not have access to this page' })).toBeInTheDocument();

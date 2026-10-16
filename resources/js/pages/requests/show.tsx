@@ -7,8 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { formatDateTime, statusLabel, transitionLabel, transitionNeedsNote } from '@/lib/workflow';
 import { type BreadcrumbItem } from '@/types';
-import type { CommentItem, HistoryItem, RequestDetail } from '@/types/civic';
-import { Head, router, useForm } from '@inertiajs/react';
+import type { AssignmentItem, CommentItem, HistoryItem, RequestDetail } from '@/types/civic';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent } from 'react';
 
 interface Actions {
@@ -17,6 +17,7 @@ interface Actions {
     canOffer: boolean;
     staff: { id: number; name: string }[];
     pendingOfferId: number | null;
+    pendingOfferTo: string | null;
 }
 
 function Panel({ title, children }: { title?: string; children: React.ReactNode }) {
@@ -58,7 +59,6 @@ function StatusForm({ request, transitions }: { request: RequestDetail; transiti
                         <InputError role="alert" message={form.errors.note} />
                     </div>
                 )}
-                <InputError role="alert" message={(form.errors as Record<string, string>).request} />
                 <Button type="submit" disabled={form.processing}>
                     Apply
                 </Button>
@@ -97,18 +97,28 @@ function OfferForm({ request, staff }: { request: RequestDetail; staff: Actions[
     );
 }
 
+// FR-016: who took or was offered the request, and who made the offer
+function assignmentLabel(a: AssignmentItem): string {
+    if (a.state === 'self_assigned') return `${a.to} took the request`;
+    return `${a.by} offered it to ${a.to}`;
+}
+
 export default function Show({
     request,
     history,
     comments,
+    assignments = [],
     actions,
 }: {
     request: RequestDetail;
     history: HistoryItem[];
     comments: CommentItem[];
+    assignments?: AssignmentItem[];
     actions: Actions;
 }) {
     const commentForm = useForm({ body: '' });
+    // Refusals from Take, Offer, Accept/Decline and stale status changes all come back under "request"
+    const { errors } = usePage().props;
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Requests', href: '/requests' },
         { title: request.reference, href: `/requests/${request.id}` },
@@ -197,6 +207,8 @@ export default function Show({
                     </div>
 
                     <aside className="space-y-4">
+                        <InputError role="alert" message={errors.request} />
+
                         {actions.pendingOfferId && (
                             <Panel title="You were offered this request">
                                 <div className="flex gap-2">
@@ -205,6 +217,15 @@ export default function Show({
                                         Decline
                                     </Button>
                                 </div>
+                            </Panel>
+                        )}
+
+                        {actions.pendingOfferTo && (
+                            <Panel title="Assignment">
+                                <p className="text-muted-foreground text-sm">
+                                    Offered to {actions.pendingOfferTo}, waiting for a reply. It cannot be taken or offered to anyone else until they
+                                    answer.
+                                </p>
                             </Panel>
                         )}
 
@@ -220,6 +241,23 @@ export default function Show({
                         )}
 
                         {actions.transitions.length > 0 && <StatusForm key={request.version} request={request} transitions={actions.transitions} />}
+
+                        {assignments.length > 0 && (
+                            <Panel title="Assignments">
+                                <ol className="border-border space-y-3 border-l-2 pl-4 text-sm">
+                                    {assignments.map((a) => (
+                                        <li key={a.id} className="flex flex-col">
+                                            <strong>{assignmentLabel(a)}</strong>
+                                            <span className="text-muted-foreground text-xs">
+                                                {formatDateTime(a.at)}
+                                                {a.responded_at && a.state !== 'self_assigned' && ` · ${a.state} ${formatDateTime(a.responded_at)}`}
+                                                {a.state === 'offered' && ' · waiting for a reply'}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </Panel>
+                        )}
 
                         <Panel title="History">
                             <ol className="border-border space-y-3 border-l-2 pl-4 text-sm">

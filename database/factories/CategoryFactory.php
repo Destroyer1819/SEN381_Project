@@ -18,9 +18,10 @@ class CategoryFactory extends Factory
     public function definition(): array
     {
         return [
-            'code'=> fake()->unique()->numberBetween(100,999),
-            'name'=> fake()->unique()->words(2,true),
-            'is_active'=> true,
+            // 200+ so random test categories never collide with the real codes 101-107, which have their own handlers (D-010)
+            'code' => fake()->unique()->numberBetween(200, 999),
+            'name' => fake()->unique()->words(2, true),
+            'is_active' => true,
         ];
     }
 }

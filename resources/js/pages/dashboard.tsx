@@ -7,7 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import { cleanFilters, statusLabel } from '@/lib/workflow';
 import { type BreadcrumbItem } from '@/types';
 import type { Category, RequestFilters } from '@/types/civic';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 
 interface Stats {
@@ -80,7 +80,13 @@ export default function Dashboard({ filters, categories, stats }: { filters: Req
                     {Object.entries(stats.by_status).map(([status, n]) => (
                         <Tile key={status} label={statusLabel(status)} value={n} testId={`count-${status}`} />
                     ))}
-                    <Tile label={`Overdue (> ${stats.overdue_days} days)`} value={stats.overdue} testId="overdue" alert />
+                    <Tile
+                        label={`Overdue (> ${stats.overdue_days} days)`}
+                        value={stats.overdue}
+                        testId="overdue"
+                        alert
+                        href={`/requests?${new URLSearchParams({ ...cleanFilters({ ...filters }), overdue: '1' } as Record<string, string>)}`}
+                    />
                 </div>
 
                 <AvgResolutionCard hours={stats.avg_resolution_hours} />
@@ -105,13 +111,22 @@ export default function Dashboard({ filters, categories, stats }: { filters: Req
     );
 }
 
-function Tile({ label, value, testId, alert = false }: { label: string; value: number; testId: string; alert?: boolean }) {
-    return (
-        <div className="bg-card flex flex-col rounded-xl border p-4">
+function Tile({ label, value, testId, alert = false, href }: { label: string; value: number; testId: string; alert?: boolean; href?: string }) {
+    const body = (
+        <>
             <span className={`text-3xl leading-tight font-bold ${alert ? 'text-red-600 dark:text-red-400' : ''}`} data-testid={testId}>
                 {value}
             </span>
             <span className="text-muted-foreground text-xs">{label}</span>
-        </div>
+        </>
+    );
+
+    // FR-023: a tile with a link opens the matching list, e.g. the overdue requests
+    return href ? (
+        <Link href={href} className="bg-card hover:bg-accent flex flex-col rounded-xl border p-4 transition-colors">
+            {body}
+        </Link>
+    ) : (
+        <div className="bg-card flex flex-col rounded-xl border p-4">{body}</div>
     );
 }

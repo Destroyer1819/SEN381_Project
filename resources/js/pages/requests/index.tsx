@@ -4,7 +4,7 @@ import SortControl from '@/components/sort-control';
 import StatusBadge from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { parseSort, sortParams, sortRequests, type SortValue } from '@/lib/sort';
+import { parseSort, sortParams, type SortValue } from '@/lib/sort';
 import { cleanFilters, formatDateTime } from '@/lib/workflow';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import type { Category, Paginator, RequestFilters, RequestSummary } from '@/types/civic';
@@ -24,9 +24,8 @@ export default function Index({ requests, filters, categories, statuses }: Props
     const { auth } = page.props;
     const isRequestor = auth.user.role === 'requestor';
 
-    // The chosen sort lives in the URL (?sort=&direction=) so it survives paging and filtering.
+    // The chosen sort lives in the URL (?sort=&direction=) so it survives paging and filtering; the server orders the rows.
     const sort = parseSort(page.url);
-    const rows = sortRequests(requests.data, sort);
 
     const visit = (query: Record<string, unknown>) =>
         router.get('/requests', query as Record<string, string>, { preserveState: true, replace: true });
@@ -76,7 +75,7 @@ export default function Index({ requests, filters, categories, statuses }: Props
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((r) => (
+                                {requests.data.map((r) => (
                                     <tr key={r.id} className="border-b align-top last:border-0">
                                         <td className="px-4 py-3">
                                             <Link href={`/requests/${r.id}`} className="text-primary font-medium hover:underline">

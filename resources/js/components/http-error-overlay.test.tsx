@@ -26,7 +26,7 @@ describe('HttpErrorOverlay', () => {
         for (const key of Object.keys(listeners)) delete listeners[key];
     });
 
-    // TC-U-20 | FR-008 | negative: a 403 from the server is shown as our own screen, not raw HTML
+    // TC-U-20 | FR-010, FR-011 | negative: a 403 from the server is shown as our own screen, not raw HTML
     it('shows the 403 screen and stops Inertia from showing its raw HTML modal', () => {
         render(<HttpErrorOverlay />);
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
